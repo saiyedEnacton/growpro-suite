@@ -71,24 +71,53 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id).then(setProfile);
+    // Get initial session and await profile fetch
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          setLoading(false);
+          return;
+        }
+
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          console.log('Fetching profile for user:', session.user.id);
+          const profileData = await fetchProfile(session.user.id);
+          setProfile(profileData);
+          
+          if (!profileData) {
+            console.warn('No profile found for user:', session.user.id);
+          }
+        } else {
+          setProfile(null);
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Error in auth initialization:', error);
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.id);
+      
       setUser(session?.user ?? null);
+      
       if (session?.user) {
         const profileData = await fetchProfile(session.user.id);
         setProfile(profileData);
       } else {
         setProfile(null);
       }
+      
       setLoading(false);
     });
 
