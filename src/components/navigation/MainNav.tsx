@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { NavLink } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -73,23 +74,19 @@ export const MainNav = () => {
     ? `${profile.first_name[0]}${profile.last_name[0]}`
     : profile?.first_name?.[0] || 'U';
 
-  const filteredNavItems = navigationItems.filter(item =>
-    userRole && item.roles.includes(userRole)
-  );
+  const filteredNavItems = userRole
+    ? navigationItems.filter(item => item.roles.includes(userRole))
+    : navigationItems.filter(item => item.label === 'Dashboard');
 
   const NavItems = ({ isMobile = false, onItemClick = () => {} }) => (
     <>
       {filteredNavItems.map((item) => {
         const Icon = item.icon;
         return (
-          <a
+          <NavLink
             key={item.href}
-            href={item.href}
-            onClick={(e) => {
-              e.preventDefault();
-              window.location.href = item.href;
-              onItemClick();
-            }}
+            to={item.href}
+            onClick={() => onItemClick()}
           >
             <Button
               variant="ghost"
@@ -99,7 +96,7 @@ export const MainNav = () => {
               <Icon className={`${isMobile ? 'mr-3' : 'mr-2'} h-4 w-4`} />
               {item.label}
             </Button>
-          </a>
+          </NavLink>
         );
       })}
     </>

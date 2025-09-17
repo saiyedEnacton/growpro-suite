@@ -35,28 +35,84 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          employee_code,
-          first_name,
-          last_name,
-          phone,
-          department,
-          designation,
-          current_status,
-          role:roles(role_name, role_description)
-        `)
-        .eq('id', userId)
-        .single();
+      const attempt = async () => {
+        // First attempt: join with roles
+        const { data, error } = await supabase
+          .from('profiles')
+          .select(`
+            id,
+            employee_code,
+            first_name,
+            last_name,
+            phone,
+            department,
+            designation,
+            current_status,
+            role:roles(role_name, role_description)
+          `)
+          .eq('id', userId)
+          .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching profile:', error);
-        return null;
+        if (error) {
+          console.warn('Profile join fetch failed, will try fallback:', error);
+        }
+
+        if (data) {
+          return data as Profile;
+        }
+
+        // Fallback: fetch base profile + role via role_id
+        const { data: base, error: baseErr } = await supabase
+          .from('profiles')
+          .select('id, employee_code, first_name, last_name, phone, department, designation, current_status, role_id')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (baseErr) {
+          console.error('Base profile fetch failed:', baseErr);
+          return null;
+        }
+
+        if (!base) {
+          console.warn('No profile row found for user:', userId);
+          return null;
+        }
+
+        let role: Profile['role'] = null;
+        if ((base as any).role_id) {
+          const { data: roleRow, error: roleErr } = await supabase
+            .from('roles')
+            .select('role_name, role_description')
+            .eq('id', (base as any).role_id)
+            .maybeSingle();
+          if (roleErr) {
+            console.warn('Role fetch failed:', roleErr);
+          } else if (roleRow) {
+            role = { role_name: roleRow.role_name as any, role_description: roleRow.role_description ?? null };
+          }
+        }
+
+        const assembled: Profile = {
+          id: base.id,
+          employee_code: base.employee_code,
+          first_name: base.first_name,
+          last_name: base.last_name,
+          phone: base.phone,
+          department: base.department,
+          designation: base.designation,
+          current_status: base.current_status,
+          role,
+        };
+        return assembled;
+      };
+
+      const delays = [0, 200, 1000];
+      for (let i = 0; i < delays.length; i++) {
+        if (delays[i]) await new Promise(res => setTimeout(res, delays[i]));
+        const result = await attempt();
+        if (result) return result;
       }
-
-      return data as Profile;
+      return null;
     } catch (error) {
       console.error('Error in fetchProfile:', error);
       return null;
@@ -71,11 +127,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
+    // Listen for auth changes FIRST (synchronous callback)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event, session?.user?.id);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        // Defer any Supabase calls to avoid deadlocks
+        setTimeout(() => {
+          refreshProfile();
+        }, 0);
+      } else {
+        setProfile(null);
+      }
+    });
+
     // Get initial session and await profile fetch
     const initializeAuth = async () => {
+      setLoading(true);
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
-        
         if (error) {
           console.error('Error getting session:', error);
           setLoading(false);
@@ -83,43 +153,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         setUser(session?.user ?? null);
-        
+
         if (session?.user) {
           console.log('Fetching profile for user:', session.user.id);
           const profileData = await fetchProfile(session.user.id);
           setProfile(profileData);
-          
           if (!profileData) {
             console.warn('No profile found for user:', session.user.id);
           }
         } else {
           setProfile(null);
         }
-        
-        setLoading(false);
       } catch (error) {
         console.error('Error in auth initialization:', error);
+      } finally {
         setLoading(false);
       }
     };
 
     initializeAuth();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.id);
-      
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        const profileData = await fetchProfile(session.user.id);
-        setProfile(profileData);
-      } else {
-        setProfile(null);
-      }
-      
-      setLoading(false);
-    });
 
     return () => subscription.unsubscribe();
   }, []);

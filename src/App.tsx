@@ -27,12 +27,21 @@ const AuthenticatedApp = () => {
     );
   }
 
-  if (!user || !profile) {
+  if (!user) {
     return (
       <Routes>
         <Route path="/auth" element={<AuthPage />} />
         <Route path="*" element={<AuthPage />} />
       </Routes>
+    );
+  }
+
+  if (user && !profile) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+        <p className="text-muted-foreground">Setting up your profile...</p>
+      </div>
     );
   }
 
