@@ -115,6 +115,15 @@ export default function CourseDetails() {
     navigate(`/courses/${courseId}/modules/${moduleId}`);
   };
 
+  const handleTakeAssessment = (assessmentId: string) => {
+    navigate(`/courses/${courseId}/assessments/${assessmentId}`);
+  };
+
+  // Check if user can manage courses
+  const canManageCourses = profile?.role?.role_name === 'Team Lead' || 
+                          profile?.role?.role_name === 'HR' ||
+                          profile?.role?.role_name === 'Management';
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -257,30 +266,43 @@ export default function CourseDetails() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {assessments.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">
-                    No assessments available yet.
-                  </p>
-                ) : (
-                  assessments.map((assessment) => (
-                    <CourseAssessment
-                      key={assessment.id}
-                      id={assessment.id}
-                      courseId={courseId}
-                      employeeId={profile?.id}
-                      assessmentType={assessment.assessment_type}
-                      status={assessment.status}
-                      totalScore={assessment.total_score}
-                      percentage={assessment.percentage}
-                      passingScore={assessment.passing_score}
-                      isMandatory={assessment.is_mandatory}
-                      grade={assessment.grade}
-                      feedback={assessment.feedback}
-                      certificateUrl={assessment.certificate_url}
-                      completionDate={assessment.completion_date}
-                    />
-                  ))
-                )}
+                  {assessments.length === 0 ? (
+                    <div className="space-y-4">
+                      <p className="text-muted-foreground text-center py-4">
+                        No assessments taken yet.
+                      </p>
+                      {/* Show default assessment option if no assessments exist */}
+                      <CourseAssessment
+                        id="default-assessment"
+                        courseId={courseId!}
+                        employeeId={profile?.id!}
+                        assessmentType="Course Assessment"
+                        isMandatory={true}
+                        passingScore={70}
+                        onRetakeAssessment={handleTakeAssessment}
+                      />
+                    </div>
+                  ) : (
+                    assessments.map((assessment) => (
+                      <CourseAssessment
+                        key={assessment.id}
+                        id={assessment.id}
+                        courseId={courseId!}
+                        employeeId={profile?.id!}
+                        assessmentType={assessment.assessment_type}
+                        status={assessment.status}
+                        totalScore={assessment.total_score}
+                        percentage={assessment.percentage}
+                        passingScore={assessment.passing_score}
+                        isMandatory={assessment.is_mandatory}
+                        grade={assessment.grade}
+                        feedback={assessment.feedback}
+                        certificateUrl={assessment.certificate_url}
+                        completionDate={assessment.completion_date}
+                        onRetakeAssessment={handleTakeAssessment}
+                      />
+                    ))
+                  )}
               </CardContent>
             </Card>
           </>

@@ -13,6 +13,8 @@ import Courses from "./pages/Courses";
 import CourseDetails from "./pages/CourseDetails";
 import ModuleViewer from "./pages/ModuleViewer";
 import CreateCourse from "./pages/CreateCourse";
+import CourseBuilder from "./pages/CourseBuilder";
+import AssessmentTaker from "./pages/AssessmentTaker";
 import Projects from "./pages/Projects";
 import TrainingSessions from "./pages/TrainingSessions";
 import NotFound from "./pages/NotFound";
@@ -56,7 +58,9 @@ const AuthenticatedApp = () => {
       <Route path="/courses" element={<Courses />} />
       <Route path="/courses/create" element={<CreateCourse />} />
       <Route path="/courses/:courseId" element={<CourseDetails />} />
+      <Route path="/courses/:courseId/edit" element={<CourseBuilder />} />
       <Route path="/courses/:courseId/modules/:moduleId" element={<ModuleViewer />} />
+      <Route path="/courses/:courseId/assessments/:assessmentId" element={<AssessmentTaker />} />
       <Route path="/projects" element={<Projects />} />
       <Route path="/training-sessions" element={<TrainingSessions />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

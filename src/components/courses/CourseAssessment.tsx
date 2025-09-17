@@ -143,9 +143,13 @@ export const CourseAssessment = ({
         {/* Action Buttons */}
         <div className="flex space-x-2">
           {status === 'Pending' && (
-            <Button className="flex-1">
-              Start Assessment
-            </Button>
+          <Button
+            size="sm"
+            className="flex-1"
+            onClick={() => onRetakeAssessment?.(id)}
+          >
+            Start Assessment
+          </Button>
           )}
           
           {canRetake && (
