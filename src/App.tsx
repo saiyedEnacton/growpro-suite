@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { Dashboard } from "./pages/Dashboard";
 import Index from "./pages/Index";
+import AuthPage from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,7 +24,12 @@ const AuthenticatedApp = () => {
   }
 
   if (!user || !profile) {
-    return <LoginForm />;
+    return (
+      <Routes>
+        <Route path="/auth" element={<AuthPage />} />
+        <Route path="*" element={<AuthPage />} />
+      </Routes>
+    );
   }
 
   return (
