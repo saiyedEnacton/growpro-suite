@@ -10,6 +10,9 @@ import Index from "./pages/Index";
 import AuthPage from "./pages/Auth";
 import Employees from "./pages/Employees";
 import Courses from "./pages/Courses";
+import CourseDetails from "./pages/CourseDetails";
+import ModuleViewer from "./pages/ModuleViewer";
+import CreateCourse from "./pages/CreateCourse";
 import Projects from "./pages/Projects";
 import TrainingSessions from "./pages/TrainingSessions";
 import NotFound from "./pages/NotFound";
@@ -51,6 +54,9 @@ const AuthenticatedApp = () => {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/employees" element={<Employees />} />
       <Route path="/courses" element={<Courses />} />
+      <Route path="/courses/create" element={<CreateCourse />} />
+      <Route path="/courses/:courseId" element={<CourseDetails />} />
+      <Route path="/courses/:courseId/modules/:moduleId" element={<ModuleViewer />} />
       <Route path="/projects" element={<Projects />} />
       <Route path="/training-sessions" element={<TrainingSessions />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
