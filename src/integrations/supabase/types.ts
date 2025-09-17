@@ -14,83 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
-      announcements: {
-        Row: {
-          author_id: string
-          content: string | null
-          created_at: string
-          id: string
-          image_url: string | null
-          link_url: string | null
-          target_role_id: string | null
-          title: string
-        }
-        Insert: {
-          author_id: string
-          content?: string | null
-          created_at?: string
-          id?: string
-          image_url?: string | null
-          link_url?: string | null
-          target_role_id?: string | null
-          title: string
-        }
-        Update: {
-          author_id?: string
-          content?: string | null
-          created_at?: string
-          id?: string
-          image_url?: string | null
-          link_url?: string | null
-          target_role_id?: string | null
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "announcements_author_id_fkey"
-            columns: ["author_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "announcements_target_role_id_fkey"
-            columns: ["target_role_id"]
-            isOneToOne: false
-            referencedRelation: "roles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       course_assessments: {
         Row: {
           assessment_type: string
           assessor_id: string | null
           certificate_url: string | null
+          completion_date: string | null
           course_id: string
           created_at: string
           employee_id: string
           feedback: string | null
           grade: string | null
           id: string
+          is_mandatory: boolean | null
+          passing_score: number | null
           percentage: number | null
-          progress_id: string
           status: string | null
           total_score: number | null
           updated_at: string
         }
         Insert: {
-          assessment_type: string
+          assessment_type?: string
           assessor_id?: string | null
           certificate_url?: string | null
+          completion_date?: string | null
           course_id: string
           created_at?: string
           employee_id: string
           feedback?: string | null
           grade?: string | null
           id?: string
+          is_mandatory?: boolean | null
+          passing_score?: number | null
           percentage?: number | null
-          progress_id: string
           status?: string | null
           total_score?: number | null
           updated_at?: string
@@ -99,14 +55,16 @@ export type Database = {
           assessment_type?: string
           assessor_id?: string | null
           certificate_url?: string | null
+          completion_date?: string | null
           course_id?: string
           created_at?: string
           employee_id?: string
           feedback?: string | null
           grade?: string | null
           id?: string
+          is_mandatory?: boolean | null
+          passing_score?: number | null
           percentage?: number | null
-          progress_id?: string
           status?: string | null
           total_score?: number | null
           updated_at?: string
@@ -133,19 +91,49 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "course_assessments_progress_id_fkey"
-            columns: ["progress_id"]
-            isOneToOne: false
-            referencedRelation: "employee_course_progress"
-            referencedColumns: ["id"]
-          },
         ]
+      }
+      course_enrollments: {
+        Row: {
+          completion_date: string | null
+          course_id: string
+          created_at: string | null
+          employee_id: string
+          enrolled_date: string | null
+          id: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          completion_date?: string | null
+          course_id: string
+          created_at?: string | null
+          employee_id: string
+          enrolled_date?: string | null
+          id?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          completion_date?: string | null
+          course_id?: string
+          created_at?: string | null
+          employee_id?: string
+          enrolled_date?: string | null
+          id?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       course_modules: {
         Row: {
+          content_path: string | null
+          content_type: string | null
+          content_url: string | null
           course_id: string
           created_at: string
+          estimated_duration_minutes: number | null
           id: string
           module_description: string | null
           module_name: string
@@ -153,8 +141,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          content_path?: string | null
+          content_type?: string | null
+          content_url?: string | null
           course_id: string
           created_at?: string
+          estimated_duration_minutes?: number | null
           id?: string
           module_description?: string | null
           module_name: string
@@ -162,8 +154,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          content_path?: string | null
+          content_type?: string | null
+          content_url?: string | null
           course_id?: string
           created_at?: string
+          estimated_duration_minutes?: number | null
           id?: string
           module_description?: string | null
           module_name?: string
@@ -182,6 +178,7 @@ export type Database = {
       }
       courses: {
         Row: {
+          completion_rule: string | null
           course_description: string | null
           course_name: string
           course_type: string | null
@@ -191,10 +188,12 @@ export type Database = {
           id: string
           is_mandatory: boolean | null
           learning_objectives: string | null
+          minimum_passing_percentage: number | null
           target_role: string | null
           updated_at: string
         }
         Insert: {
+          completion_rule?: string | null
           course_description?: string | null
           course_name: string
           course_type?: string | null
@@ -204,10 +203,12 @@ export type Database = {
           id?: string
           is_mandatory?: boolean | null
           learning_objectives?: string | null
+          minimum_passing_percentage?: number | null
           target_role?: string | null
           updated_at?: string
         }
         Update: {
+          completion_rule?: string | null
           course_description?: string | null
           course_name?: string
           course_type?: string | null
@@ -217,6 +218,7 @@ export type Database = {
           id?: string
           is_mandatory?: boolean | null
           learning_objectives?: string | null
+          minimum_passing_percentage?: number | null
           target_role?: string | null
           updated_at?: string
         }
@@ -224,70 +226,6 @@ export type Database = {
           {
             foreignKeyName: "courses_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      employee_course_progress: {
-        Row: {
-          actual_completion_date: string | null
-          assigned_by: string | null
-          course_id: string
-          created_at: string
-          employee_id: string
-          enrollment_date: string | null
-          id: string
-          progress_percentage: number | null
-          status: string | null
-          target_completion_date: string | null
-          updated_at: string
-        }
-        Insert: {
-          actual_completion_date?: string | null
-          assigned_by?: string | null
-          course_id: string
-          created_at?: string
-          employee_id: string
-          enrollment_date?: string | null
-          id?: string
-          progress_percentage?: number | null
-          status?: string | null
-          target_completion_date?: string | null
-          updated_at?: string
-        }
-        Update: {
-          actual_completion_date?: string | null
-          assigned_by?: string | null
-          course_id?: string
-          created_at?: string
-          employee_id?: string
-          enrollment_date?: string | null
-          id?: string
-          progress_percentage?: number | null
-          status?: string | null
-          target_completion_date?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "employee_course_progress_assigned_by_fkey"
-            columns: ["assigned_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "employee_course_progress_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "employee_course_progress_employee_id_fkey"
-            columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -351,127 +289,6 @@ export type Database = {
             columns: ["verified_by"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      employee_lesson_progress: {
-        Row: {
-          completion_time: string | null
-          created_at: string
-          employee_id: string
-          id: string
-          lesson_id: string
-          progress_id: string
-          start_time: string | null
-          status: string | null
-          time_spent_minutes: number | null
-          updated_at: string
-        }
-        Insert: {
-          completion_time?: string | null
-          created_at?: string
-          employee_id: string
-          id?: string
-          lesson_id: string
-          progress_id: string
-          start_time?: string | null
-          status?: string | null
-          time_spent_minutes?: number | null
-          updated_at?: string
-        }
-        Update: {
-          completion_time?: string | null
-          created_at?: string
-          employee_id?: string
-          id?: string
-          lesson_id?: string
-          progress_id?: string
-          start_time?: string | null
-          status?: string | null
-          time_spent_minutes?: number | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "employee_lesson_progress_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "employee_lesson_progress_lesson_id_fkey"
-            columns: ["lesson_id"]
-            isOneToOne: false
-            referencedRelation: "lessons"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "employee_lesson_progress_progress_id_fkey"
-            columns: ["progress_id"]
-            isOneToOne: false
-            referencedRelation: "employee_course_progress"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lessons: {
-        Row: {
-          content_path: string | null
-          content_url: string | null
-          created_at: string
-          created_by: string | null
-          estimated_duration_minutes: number | null
-          id: string
-          lesson_name: string
-          lesson_order: number
-          lesson_type: string
-          login_details: Json | null
-          module_id: string
-          updated_at: string
-        }
-        Insert: {
-          content_path?: string | null
-          content_url?: string | null
-          created_at?: string
-          created_by?: string | null
-          estimated_duration_minutes?: number | null
-          id?: string
-          lesson_name: string
-          lesson_order: number
-          lesson_type: string
-          login_details?: Json | null
-          module_id: string
-          updated_at?: string
-        }
-        Update: {
-          content_path?: string | null
-          content_url?: string | null
-          created_at?: string
-          created_by?: string | null
-          estimated_duration_minutes?: number | null
-          id?: string
-          lesson_name?: string
-          lesson_order?: number
-          lesson_type?: string
-          login_details?: Json | null
-          module_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lessons_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lessons_module_id_fkey"
-            columns: ["module_id"]
-            isOneToOne: false
-            referencedRelation: "course_modules"
             referencedColumns: ["id"]
           },
         ]
@@ -726,73 +543,6 @@ export type Database = {
           },
         ]
       }
-      questions: {
-        Row: {
-          correct_answers: Json | null
-          course_id: string | null
-          created_at: string
-          created_by: string | null
-          difficulty_level: string | null
-          id: string
-          lesson_id: string | null
-          options: Json | null
-          points: number | null
-          question_text: string
-          question_type: string
-          updated_at: string
-        }
-        Insert: {
-          correct_answers?: Json | null
-          course_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          difficulty_level?: string | null
-          id?: string
-          lesson_id?: string | null
-          options?: Json | null
-          points?: number | null
-          question_text: string
-          question_type: string
-          updated_at?: string
-        }
-        Update: {
-          correct_answers?: Json | null
-          course_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          difficulty_level?: string | null
-          id?: string
-          lesson_id?: string | null
-          options?: Json | null
-          points?: number | null
-          question_text?: string
-          question_type?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "questions_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "questions_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "questions_lesson_id_fkey"
-            columns: ["lesson_id"]
-            isOneToOne: false
-            referencedRelation: "lessons"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       roles: {
         Row: {
           created_at: string
@@ -816,83 +566,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      student_lesson_assessments: {
-        Row: {
-          answer_text: string | null
-          attempt_number: number | null
-          created_at: string
-          employee_id: string
-          feedback: string | null
-          graded_by: string | null
-          id: string
-          is_correct: boolean | null
-          lesson_progress_id: string | null
-          question_id: string
-          score: number | null
-          selected_options: Json | null
-          updated_at: string
-        }
-        Insert: {
-          answer_text?: string | null
-          attempt_number?: number | null
-          created_at?: string
-          employee_id: string
-          feedback?: string | null
-          graded_by?: string | null
-          id?: string
-          is_correct?: boolean | null
-          lesson_progress_id?: string | null
-          question_id: string
-          score?: number | null
-          selected_options?: Json | null
-          updated_at?: string
-        }
-        Update: {
-          answer_text?: string | null
-          attempt_number?: number | null
-          created_at?: string
-          employee_id?: string
-          feedback?: string | null
-          graded_by?: string | null
-          id?: string
-          is_correct?: boolean | null
-          lesson_progress_id?: string | null
-          question_id?: string
-          score?: number | null
-          selected_options?: Json | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "student_lesson_assessments_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "student_lesson_assessments_graded_by_fkey"
-            columns: ["graded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "student_lesson_assessments_lesson_progress_id_fkey"
-            columns: ["lesson_progress_id"]
-            isOneToOne: false
-            referencedRelation: "employee_lesson_progress"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "student_lesson_assessments_question_id_fkey"
-            columns: ["question_id"]
-            isOneToOne: false
-            referencedRelation: "questions"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       training_sessions: {
         Row: {
@@ -972,6 +645,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_course_completion: {
+        Args: { p_course_id: string; p_employee_id: string }
+        Returns: boolean
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: string
