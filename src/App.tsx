@@ -9,6 +9,9 @@ import { Dashboard } from "./pages/Dashboard";
 import Index from "./pages/Index";
 import AuthPage from "./pages/Auth";
 import Employees from "./pages/Employees";
+import Courses from "./pages/Courses";
+import Projects from "./pages/Projects";
+import TrainingSessions from "./pages/TrainingSessions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +41,9 @@ const AuthenticatedApp = () => {
       <Route path="/" element={<Dashboard />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/employees" element={<Employees />} />
+      <Route path="/courses" element={<Courses />} />
+      <Route path="/projects" element={<Projects />} />
+      <Route path="/training-sessions" element={<TrainingSessions />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>

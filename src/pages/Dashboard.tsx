@@ -1,5 +1,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { UserRoles } from '@/lib/enums';
+import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useState } from 'react';
 import { DashboardCard } from '@/components/dashboard/DashboardCard';
 import { ProgressChart } from '@/components/dashboard/ProgressChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,8 +23,65 @@ import {
 export const Dashboard = () => {
   const { profile } = useAuth();
   const userRole = profile?.role?.role_name;
+  
+  // State for real data
+  const [dashboardData, setDashboardData] = useState({
+    totalEmployees: 0,
+    activeCourses: 0,
+    completedCourses: 0,
+    certificates: 0,
+    loading: true
+  });
 
-  // Sample data - would come from API calls (simplified course structure)
+  // Fetch real data from Supabase
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        // Fetch total employees count
+        const { count: totalEmployees } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true });
+        
+        // Fetch user's active courses
+        const { count: activeCourses } = await supabase
+          .from('course_enrollments')
+          .select('*', { count: 'exact', head: true })
+          .eq('employee_id', profile?.id)
+          .eq('status', 'enrolled');
+        
+        // Fetch user's completed courses
+        const { count: completedCourses } = await supabase
+          .from('course_enrollments')
+          .select('*', { count: 'exact', head: true })
+          .eq('employee_id', profile?.id)
+          .eq('status', 'completed');
+          
+        // Fetch user's certificates
+        const { count: certificates } = await supabase
+          .from('course_assessments')
+          .select('*', { count: 'exact', head: true })
+          .eq('employee_id', profile?.id)
+          .not('certificate_url', 'is', null);
+        
+        setDashboardData({
+          totalEmployees: totalEmployees || 0,
+          activeCourses: activeCourses || 0,
+          completedCourses: completedCourses || 0,
+          certificates: certificates || 0,
+          loading: false
+        });
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        setDashboardData(prev => ({ ...prev, loading: false }));
+      }
+    };
+
+    if (profile?.id) {
+      fetchDashboardData();
+    }
+  }, [profile?.id]);
+
+  // Sample data for progress chart - will be replaced with real data
   const sampleEnrollmentData = [
     { label: 'JavaScript Fundamentals', assessments: 2, completed: 2, color: 'success' as const },
     { label: 'React Development', assessments: 3, completed: 1, color: 'warning' as const },
@@ -71,7 +130,7 @@ export const Dashboard = () => {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <DashboardCard
           title="Total Employees"
-          value="248"
+          value={dashboardData.loading ? "..." : dashboardData.totalEmployees.toString()}
           description="Active workforce"
           icon={Users}
           trend={{ value: 12, label: 'from last month' }}
@@ -137,21 +196,21 @@ export const Dashboard = () => {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <DashboardCard
           title="Active Courses"
-          value="3"
+          value={dashboardData.loading ? "..." : dashboardData.activeCourses.toString()}
           description="Currently enrolled"
           icon={BookOpen}
           trend={{ value: 1, label: 'new this week' }}
         />
         <DashboardCard
           title="Completed"
-          value="12"
+          value={dashboardData.loading ? "..." : dashboardData.completedCourses.toString()}
           description="Courses finished"
           icon={CheckCircle}
           trend={{ value: 20, label: 'this month' }}
         />
         <DashboardCard
           title="Certificates"
-          value="8"
+          value={dashboardData.loading ? "..." : dashboardData.certificates.toString()}
           description="Earned credentials"
           icon={Award}
         />
