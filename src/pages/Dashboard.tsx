@@ -22,27 +22,27 @@ export const Dashboard = () => {
   const { profile } = useAuth();
   const userRole = profile?.role?.role_name;
 
-  // Sample data - would come from API calls
-  const sampleProgressData = [
-    { label: 'JavaScript Fundamentals', value: 8, total: 10, color: 'success' as const },
-    { label: 'React Development', value: 5, total: 12, color: 'warning' as const },
-    { label: 'Database Design', value: 3, total: 8, color: 'error' as const },
+  // Sample data - would come from API calls (simplified course structure)
+  const sampleEnrollmentData = [
+    { label: 'JavaScript Fundamentals', assessments: 2, completed: 2, color: 'success' as const },
+    { label: 'React Development', assessments: 3, completed: 1, color: 'warning' as const },
+    { label: 'Database Design', assessments: 2, completed: 0, color: 'error' as const },
   ];
 
   const recentActivities = [
     {
       id: 1,
-      title: 'Completed JavaScript Quiz',
-      description: 'Scored 95% on Module 3 assessment',
+      title: 'Completed Course Assessment',
+      description: 'Scored 95% on JavaScript Fundamentals',
       time: '2 hours ago',
       type: 'achievement'
     },
     {
       id: 2,
-      title: 'New Project Assigned',
-      description: 'E-commerce Website Development',
+      title: 'New Course Enrollment',
+      description: 'Enrolled in React Development course',
       time: '4 hours ago',
-      type: 'assignment'
+      type: 'enrollment'
     },
     {
       id: 3,
@@ -57,8 +57,8 @@ export const Dashboard = () => {
     switch (type) {
       case 'achievement':
         return <Award className="w-4 h-4 text-success" />;
-      case 'assignment':
-        return <Target className="w-4 h-4 text-primary" />;
+      case 'enrollment':
+        return <BookOpen className="w-4 h-4 text-primary" />;
       case 'reminder':
         return <Clock className="w-4 h-4 text-warning" />;
       default:
@@ -121,11 +121,11 @@ export const Dashboard = () => {
         </Card>
 
         <ProgressChart
-          title="Training Effectiveness"
+          title="Course Completion Rates"
           data={[
-            { label: 'Technical Skills', value: 185, total: 200, color: 'primary' },
-            { label: 'Soft Skills', value: 150, total: 200, color: 'secondary' },
-            { label: 'Leadership', value: 95, total: 150, color: 'success' },
+            { label: 'Technical Courses', value: 85, total: 100, color: 'primary' },
+            { label: 'Soft Skills', value: 72, total: 100, color: 'secondary' },
+            { label: 'Leadership', value: 63, total: 100, color: 'success' },
           ]}
         />
       </div>
@@ -165,8 +165,13 @@ export const Dashboard = () => {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <ProgressChart
-          title="Learning Progress"
-          data={sampleProgressData}
+          title="Course Assessments"
+          data={sampleEnrollmentData.map(course => ({
+            label: course.label,
+            value: course.completed,
+            total: course.assessments,
+            color: course.color
+          }))}
         />
         
         <Card>
