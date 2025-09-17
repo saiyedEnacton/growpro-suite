@@ -8,6 +8,7 @@ import { LoginForm } from "@/components/auth/LoginForm";
 import { Dashboard } from "./pages/Dashboard";
 import Index from "./pages/Index";
 import AuthPage from "./pages/Auth";
+import Employees from "./pages/Employees";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const AuthenticatedApp = () => {
     <Routes>
       <Route path="/" element={<Dashboard />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/employees" element={<Employees />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>

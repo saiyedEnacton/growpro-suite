@@ -48,7 +48,7 @@ const navigationItems: NavItem[] = [
     label: 'Employees',
     icon: Users,
     href: '/employees',
-    roles: [UserRoles.MANAGEMENT, UserRoles.HR, UserRoles.TEAM_LEAD],
+    roles: [UserRoles.MANAGEMENT, UserRoles.HR],
   },
   {
     label: 'Projects',
@@ -82,16 +82,24 @@ export const MainNav = () => {
       {filteredNavItems.map((item) => {
         const Icon = item.icon;
         return (
-          <Button
+          <a
             key={item.href}
-            variant="ghost"
-            size={isMobile ? "lg" : "sm"}
-            className={`${isMobile ? 'justify-start w-full' : ''} text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors`}
-            onClick={onItemClick}
+            href={item.href}
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = item.href;
+              onItemClick();
+            }}
           >
-            <Icon className={`${isMobile ? 'mr-3' : 'mr-2'} h-4 w-4`} />
-            {item.label}
-          </Button>
+            <Button
+              variant="ghost"
+              size={isMobile ? "lg" : "sm"}
+              className={`${isMobile ? 'justify-start w-full' : ''} text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors`}
+            >
+              <Icon className={`${isMobile ? 'mr-3' : 'mr-2'} h-4 w-4`} />
+              {item.label}
+            </Button>
+          </a>
         );
       })}
     </>
