@@ -23,7 +23,7 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  refreshProfile: (userId?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -119,10 +119,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const refreshProfile = async () => {
-    if (user) {
-      const profileData = await fetchProfile(user.id);
+  const refreshProfile = async (userId?: string) => {
+    const id = userId ?? user?.id;
+    if (id) {
+      const profileData = await fetchProfile(id);
       setProfile(profileData);
+    } else {
+      setProfile(null);
     }
   };
 
@@ -132,9 +135,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('Auth state changed:', event, session?.user?.id);
       setUser(session?.user ?? null);
       if (session?.user) {
-        // Defer any Supabase calls to avoid deadlocks
+        // Defer any Supabase calls to avoid deadlocks and clear stale profile immediately
+        setProfile(null);
         setTimeout(() => {
-          refreshProfile();
+          refreshProfile(session.user!.id);
         }, 0);
       } else {
         setProfile(null);
@@ -185,7 +189,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
       
       // Attempt server-side logout, but don't throw if it fails
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
       if (error && error.message !== 'Session from session_id claim in JWT does not exist') {
         console.warn('Sign out error (non-critical):', error);
       }
