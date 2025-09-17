@@ -177,7 +177,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      console.log('Signing out...');
+      // Always clear local state first
+      setUser(null);
+      setProfile(null);
+      setLoading(false);
+      
+      // Attempt server-side logout, but don't throw if it fails
+      const { error } = await supabase.auth.signOut();
+      if (error && error.message !== 'Session from session_id claim in JWT does not exist') {
+        console.warn('Sign out error (non-critical):', error);
+      }
+      
+      console.log('Sign out completed');
+    } catch (error) {
+      // Even if server-side logout fails, we've cleared local state
+      console.warn('Sign out error (handled):', error);
+    }
   };
 
   const value = {
