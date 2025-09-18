@@ -161,7 +161,7 @@ export const CourseAssessment = ({
           <Button
             size="sm"
             className="flex-1"
-            onClick={() => onRetakeAssessment?.(id)}
+            onClick={() => window.location.href = `/assessment/${id}`}
           >
             Start Assessment
           </Button>
@@ -171,7 +171,7 @@ export const CourseAssessment = ({
             <Button 
               variant="outline" 
               className="flex-1"
-              onClick={() => onRetakeAssessment?.(id)}
+              onClick={() => window.location.href = `/assessment/${id}`}
             >
               Retake Assessment
             </Button>

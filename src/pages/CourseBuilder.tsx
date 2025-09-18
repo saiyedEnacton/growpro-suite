@@ -26,7 +26,8 @@ import {
   Video, 
   Link as LinkIcon,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  X
 } from 'lucide-react';
 
 interface Course {
@@ -78,15 +79,6 @@ export default function CourseBuilder() {
   // Dialog states
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
-
-  const [moduleForm, setModuleForm] = useState({
-    module_name: '',
-    module_description: '',
-    content_type: 'text',
-    content_url: '',
-    content_path: '',
-    estimated_duration_minutes: 60
-  });
 
   useEffect(() => {
     if (courseId) {
@@ -191,59 +183,10 @@ export default function CourseBuilder() {
     }
   };
 
-  const handleSaveModule = async () => {
-    if (!courseId) return;
-
-    try {
-      setSaving(true);
-      const moduleData = {
-        ...moduleForm,
-        course_id: courseId,
-        module_order: editingModule ? editingModule.module_order : modules.length + 1
-      };
-
-      if (editingModule) {
-        const { error } = await supabase
-          .from('course_modules')
-          .update(moduleData)
-          .eq('id', editingModule.id);
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('course_modules')
-          .insert(moduleData);
-
-        if (error) throw error;
-      }
-
-      await fetchCourseData();
-      setModuleDialogOpen(false);
-      setEditingModule(null);
-      setModuleForm({
-        module_name: '',
-        module_description: '',
-        content_type: 'text',
-        content_url: '',
-        content_path: '',
-        estimated_duration_minutes: 60
-      });
-
-      toast({
-        title: "Success",
-        description: `Module ${editingModule ? 'updated' : 'created'} successfully.`,
-      });
-
-    } catch (error: any) {
-      console.error('Error saving module:', error);
-      toast({
-        title: "Error",
-        description: `Failed to ${editingModule ? 'update' : 'create'} module. Please try again.`,
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
+  const handleSaveModule = async (moduleData: Module) => {
+    await fetchCourseData();
+    setModuleDialogOpen(false);
+    setEditingModule(null);
   };
 
   const handleDeleteModule = async (moduleId: string) => {
@@ -386,7 +329,6 @@ export default function CourseBuilder() {
                       id="course_name"
                       value={course.course_name}
                       onChange={(e) => setCourse({...course, course_name: e.target.value})}
-                      onBlur={() => handleSaveCourse({course_name: course.course_name})}
                     />
                   </div>
                   <div>
@@ -416,7 +358,6 @@ export default function CourseBuilder() {
                     id="course_description"
                     value={course.course_description || ''}
                     onChange={(e) => setCourse({...course, course_description: e.target.value})}
-                    onBlur={() => handleSaveCourse({course_description: course.course_description})}
                     rows={3}
                   />
                 </div>
@@ -427,7 +368,6 @@ export default function CourseBuilder() {
                     id="learning_objectives"
                     value={course.learning_objectives || ''}
                     onChange={(e) => setCourse({...course, learning_objectives: e.target.value})}
-                    onBlur={() => handleSaveCourse({learning_objectives: course.learning_objectives})}
                     rows={3}
                   />
                 </div>
@@ -443,6 +383,12 @@ export default function CourseBuilder() {
                   />
                   <Label htmlFor="is_mandatory">Mandatory Course</Label>
                 </div>
+                
+                <div className="flex justify-end mt-6">
+                  <Button onClick={() => handleSaveCourse(course)} disabled={saving}>
+                    {saving ? 'Updating...' : 'Update Course'}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -451,114 +397,110 @@ export default function CourseBuilder() {
           <TabsContent value="modules" className="space-y-6">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold">Course Modules</h3>
-              <Dialog open={moduleDialogOpen} onOpenChange={setModuleDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => {
-                    setEditingModule(null);
-                    setModuleForm({
-                      module_name: '',
-                      module_description: '',
-                      content_type: 'text',
-                      content_url: '',
-                      content_path: '',
-                      estimated_duration_minutes: 60
-                    });
-                  }}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Module
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingModule ? 'Edit Module' : 'Add New Module'}
-                    </DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="module_name">Module Name</Label>
-                      <Input
-                        id="module_name"
-                        value={moduleForm.module_name}
-                        onChange={(e) => setModuleForm({...moduleForm, module_name: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="module_description">Description</Label>
-                      <Textarea
-                        id="module_description"
-                        value={moduleForm.module_description}
-                        onChange={(e) => setModuleForm({...moduleForm, module_description: e.target.value})}
-                        rows={3}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="content_type">Content Type</Label>
-                        <Select
-                          value={moduleForm.content_type}
-                          onValueChange={(value) => setModuleForm({...moduleForm, content_type: value})}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="text">Text</SelectItem>
-                            <SelectItem value="video">Video</SelectItem>
-                            <SelectItem value="document">Document</SelectItem>
-                            <SelectItem value="link">External Link</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="estimated_duration">Duration (minutes)</Label>
-                        <Input
-                          id="estimated_duration"
-                          type="number"
-                          value={moduleForm.estimated_duration_minutes}
-                          onChange={(e) => setModuleForm({...moduleForm, estimated_duration_minutes: parseInt(e.target.value) || 60})}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="content_url">Content URL</Label>
-                      <Input
-                        id="content_url"
-                        value={moduleForm.content_url}
-                        onChange={(e) => setModuleForm({...moduleForm, content_url: e.target.value})}
-                        placeholder="https://example.com/video or file path"
-                      />
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" onClick={() => setModuleDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleSaveModule} disabled={saving}>
-                        {saving ? 'Saving...' : editingModule ? 'Update' : 'Create'}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button onClick={() => {
+                setEditingModule(null);
+                setModuleDialogOpen(true);
+              }}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Module
+              </Button>
             </div>
+
+            {moduleDialogOpen && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-background p-6 rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold">
+                      {editingModule ? 'Edit Module' : 'Add New Module'}
+                    </h2>
+                    <Button variant="ghost" size="sm" onClick={() => setModuleDialogOpen(false)}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <EnhancedModuleDialog
+                    courseId={courseId!}
+                    module={editingModule}
+                    moduleOrder={modules.length + 1}
+                    onSave={handleSaveModule}
+                    onClose={() => setModuleDialogOpen(false)}
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="space-y-4">
               {modules.map((module, index) => (
                 <Card key={module.id}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-4">
                         <div className="flex items-center space-x-2">
                           <GripVertical className="w-4 h-4 text-muted-foreground" />
                           <Badge variant="outline">Module {module.module_order}</Badge>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          {getContentIcon(module.content_type)}
-                          <div>
-                            <h4 className="font-medium">{module.module_name}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              {module.content_type} • {module.estimated_duration_minutes} min
-                            </p>
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            {getContentIcon(module.content_type)}
+                            <div>
+                              <h4 className="font-medium">{module.module_name}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {module.content_type} • {module.estimated_duration_minutes} min
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Display additional content */}
+                          <div className="ml-6 space-y-1">
+                            {/* Primary content URL */}
+                            {module.content_url && (() => {
+                              try {
+                                const parsed = JSON.parse(module.content_url);
+                                return (
+                                  <>
+                                    {parsed.url && (
+                                      <p className="text-xs text-muted-foreground">
+                                        📄 {parsed.url}
+                                      </p>
+                                    )}
+                                    {parsed.links && parsed.links.length > 0 && (
+                                      <div>
+                                        <p className="text-xs font-medium text-muted-foreground">Links:</p>
+                                        {parsed.links.map((link: any, i: number) => (
+                                          <p key={i} className="text-xs text-muted-foreground ml-2">
+                                            🔗 {link.name}: {link.url}
+                                          </p>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </>
+                                );
+                              } catch {
+                                return module.content_url ? (
+                                  <p className="text-xs text-muted-foreground">📄 {module.content_url}</p>
+                                ) : null;
+                              }
+                            })()}
+                            
+                            {/* Files */}
+                            {module.content_path && (() => {
+                              try {
+                                const parsed = JSON.parse(module.content_path);
+                                return parsed.files && parsed.files.length > 0 ? (
+                                  <div>
+                                    <p className="text-xs font-medium text-muted-foreground">Files:</p>
+                                    {parsed.files.map((file: any, i: number) => (
+                                      <p key={i} className="text-xs text-muted-foreground ml-2">
+                                        📎 {file.name}
+                                      </p>
+                                    ))}
+                                  </div>
+                                ) : null;
+                              } catch {
+                                return module.content_path ? (
+                                  <p className="text-xs text-muted-foreground">📎 {module.content_path}</p>
+                                ) : null;
+                              }
+                            })()}
                           </div>
                         </div>
                       </div>
