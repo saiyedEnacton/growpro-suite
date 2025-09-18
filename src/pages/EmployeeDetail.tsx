@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Edit, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { UserRoleType } from '@/lib/enums';
+import { UserRoleType, EmployeeStatusOptions } from '@/lib/enums';
 
 // --- TYPE DEFINITIONS ---
 
@@ -130,7 +130,6 @@ export default function EmployeeDetail() {
   const handleSave = async () => {
     if (!canManage || !isEditing) return;
     
-    // Explicitly build the payload with only the columns that should be updated
     const updatePayload = {
       first_name: editData.first_name,
       last_name: editData.last_name,
@@ -139,6 +138,7 @@ export default function EmployeeDetail() {
       designation: editData.designation,
       phone: editData.phone,
       date_of_joining: editData.date_of_joining,
+      current_status: editData.current_status,
     };
 
     try {
@@ -207,7 +207,6 @@ export default function EmployeeDetail() {
             ) : (
                 <CardTitle className="text-2xl">{employee.first_name} {employee.last_name}</CardTitle>
             )}
-            <Badge>{isEditing ? <Input value={editData.current_status || ''} onChange={e => handleInputChange('current_status', e.target.value)} /> : employee.current_status}</Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -243,12 +242,29 @@ export default function EmployeeDetail() {
               {isEditing ? <Input value={editData.designation || ''} onChange={e => handleInputChange('designation', e.target.value)} /> : <p className="text-lg">{employee.designation || 'N/A'}</p>}
             </div>
             <div>
+              <Label>Status</Label>
+              {isEditing ? (
+                <Select onValueChange={value => handleInputChange('current_status', value)} value={editData.current_status || ''}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EmployeeStatusOptions.map(status => (
+                      <SelectItem key={status} value={status}>{status}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Badge>{employee.current_status}</Badge>
+              )}
+            </div>
+            <div>
               <Label>Phone</Label>
               {isEditing ? <Input value={editData.phone || ''} onChange={e => handleInputChange('phone', e.target.value)} /> : <p className="text-lg">{employee.phone || 'N/A'}</p>}
             </div>
             <div>
               <Label>Date of Joining</Label>
-              {isEditing ? <Input type="date" value={editData.date_of_joining ? new Date(editData.date_of_joining).toISOString().split('T')[0] : ''} onChange={e => handleInputChange('date_of_joining', e.target.value)} /> : <p className="text-lg">{employee.date_of_joining ? new Date(employee.date_of_joining).toLocaleDateString() : <span className="text-muted-foreground">Not Set</span>}</p>}
+              {isEditing ? <Input type="date" className="text-black dark:[color-scheme:dark]" value={editData.date_of_joining ? new Date(editData.date_of_joining).toISOString().split('T')[0] : ''} onChange={e => handleInputChange('date_of_joining', e.target.value)} /> : <p className="text-lg">{employee.date_of_joining ? new Date(employee.date_of_joining).toLocaleDateString() : <span className="text-muted-foreground">Not Set</span>}</p>}
             </div>
           </div>
         </CardContent>
