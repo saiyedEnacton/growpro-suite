@@ -7,9 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users, Search, UserCheck, UserX, Crown } from 'lucide-react';
+import { Users, Search, UserCheck, UserX, Crown, Plus, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserRoleType } from '@/lib/enums';
+import { AddEmployeeDialog } from '@/components/employees/AddEmployeeDialog';
+import { Link } from 'react-router-dom';
 
 interface Employee {
   id: string;
@@ -41,6 +43,7 @@ export default function Employees() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [addEmployeeDialogOpen, setAddEmployeeDialogOpen] = useState(false);
 
   // Check if user has permission to access this page
   if (!profile || !['HR', 'Management'].includes(profile.role?.role_name || '')) {
@@ -184,9 +187,15 @@ export default function Employees() {
             <Users className="h-6 w-6 text-primary" />
             <h1 className="text-2xl font-bold">Employee Management</h1>
           </div>
-          <Badge variant="outline" className="text-sm">
-            {filteredEmployees.length} Employees
-          </Badge>
+          <div className="flex items-center space-x-3">
+            <Button onClick={() => setAddEmployeeDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Employee
+            </Button>
+            <Badge variant="outline" className="text-sm">
+              {filteredEmployees.length} Employees
+            </Badge>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -333,21 +342,28 @@ export default function Employees() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Select 
-                          value={employee.role?.id || ''} 
-                          onValueChange={(roleId) => updateEmployeeRole(employee.id, roleId)}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue placeholder="Change Role" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {roles.map((role) => (
-                              <SelectItem key={role.id} value={role.id}>
-                                {role.role_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="flex space-x-2">
+                          <Link to={`/employees/${employee.id}`}>
+                            <Button variant="outline" size="sm">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          <Select 
+                            value={employee.role?.id || ''} 
+                            onValueChange={(roleId) => updateEmployeeRole(employee.id, roleId)}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue placeholder="Change Role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {roles.map((role) => (
+                                <SelectItem key={role.id} value={role.id}>
+                                  {role.role_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -366,6 +382,16 @@ export default function Employees() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Add Employee Dialog */}
+        <AddEmployeeDialog
+          open={addEmployeeDialogOpen}
+          onOpenChange={setAddEmployeeDialogOpen}
+          onSuccess={() => {
+            fetchEmployees();
+            setAddEmployeeDialogOpen(false);
+          }}
+        />
       </div>
     </div>
   );
