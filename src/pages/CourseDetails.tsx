@@ -8,10 +8,12 @@ import { Separator } from '@/components/ui/separator';
 import { CourseModule } from '@/components/courses/CourseModule';
 import { CourseEnrollment } from '@/components/courses/CourseEnrollment';
 import { CourseAssessment } from '@/components/courses/CourseAssessment';
-import { ArrowLeft, Clock, Users, BookOpen, Award } from 'lucide-react';
+import { ArrowLeft, Clock, Users, BookOpen, Award, Edit, UserPlus, Settings } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { CourseAssignmentDialog } from '@/components/courses/CourseAssignmentDialog';
 
 export default function CourseDetails() {
   const { courseId } = useParams();
@@ -24,6 +26,7 @@ export default function CourseDetails() {
   const [enrollment, setEnrollment] = useState(null);
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
 
   useEffect(() => {
     if (courseId && profile?.id) {
@@ -184,7 +187,30 @@ export default function CourseDetails() {
                   )}
                 </div>
               </div>
-              <BookOpen className="h-8 w-8 text-primary" />
+              
+              <div className="flex items-center space-x-2">
+                {canManageCourses && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/course-builder/${courseId}`)}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit Course
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAssignmentDialog(true)}
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Assign to Employees
+                    </Button>
+                  </>
+                )}
+                <BookOpen className="h-8 w-8 text-primary" />
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -307,6 +333,22 @@ export default function CourseDetails() {
             </Card>
           </>
         )}
+
+        {/* Assignment Dialog */}
+        <Dialog open={showAssignmentDialog} onOpenChange={setShowAssignmentDialog}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Assign Course to Employees</DialogTitle>
+            </DialogHeader>
+            {course && (
+              <CourseAssignmentDialog
+                courseId={course.id}
+                courseName={course.course_name}
+                onClose={() => setShowAssignmentDialog(false)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

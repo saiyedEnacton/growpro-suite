@@ -8,10 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Save } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ArrowLeft, Save, Plus, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { ModuleDialog } from '@/components/courses/ModuleDialog';
+import { AssessmentDialog } from '@/components/courses/AssessmentDialog';
 
 export default function CreateCourse() {
   const navigate = useNavigate();
@@ -19,6 +23,17 @@ export default function CreateCourse() {
   const { toast } = useToast();
   
   const [loading, setLoading] = useState(false);
+  const [currentCourseId, setCurrentCourseId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('details');
+  const [modules, setModules] = useState<any[]>([]);
+  const [assessments, setAssessments] = useState<any[]>([]);
+  
+  // Dialog states
+  const [showModuleDialog, setShowModuleDialog] = useState(false);
+  const [showAssessmentDialog, setShowAssessmentDialog] = useState(false);
+  const [editingModule, setEditingModule] = useState<any>(null);
+  const [editingAssessment, setEditingAssessment] = useState<any>(null);
+  
   const [formData, setFormData] = useState({
     course_name: '',
     course_description: '',
@@ -65,12 +80,15 @@ export default function CreateCourse() {
 
       if (error) throw error;
 
+      setCurrentCourseId(data.id);
+      
       toast({
         title: "Success",
-        description: "Course created successfully"
+        description: "Course created successfully. Now you can add modules and assessments."
       });
       
-      navigate(`/courses/${data.id}`);
+      // Switch to modules tab after course creation
+      setActiveTab('modules');
     } catch (error) {
       console.error('Error creating course:', error);
       toast({
@@ -81,6 +99,90 @@ export default function CreateCourse() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAddModule = () => {
+    setEditingModule(null);
+    setShowModuleDialog(true);
+  };
+
+  const handleEditModule = (module: any) => {
+    setEditingModule(module);
+    setShowModuleDialog(true);
+  };
+
+  const handleDeleteModule = async (moduleId: string) => {
+    if (!currentCourseId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('course_modules')
+        .delete()
+        .eq('id', moduleId);
+
+      if (error) throw error;
+
+      setModules(prev => prev.filter(m => m.id !== moduleId));
+      toast({
+        title: "Success",
+        description: "Module deleted successfully",
+      });
+    } catch (error) {
+      console.error('Error deleting module:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete module",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleModuleSave = (module: any) => {
+    if (editingModule) {
+      setModules(prev => prev.map(m => m.id === module.id ? module : m));
+    } else {
+      setModules(prev => [...prev, module]);
+    }
+  };
+
+  const handleAddAssessment = () => {
+    setEditingAssessment(null);
+    setShowAssessmentDialog(true);
+  };
+
+  const handleEditAssessment = (assessment: any) => {
+    setEditingAssessment(assessment);
+    setShowAssessmentDialog(true);
+  };
+
+  const handleDeleteAssessment = async (assessmentId: string) => {
+    if (!currentCourseId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('assessment_templates')
+        .delete()
+        .eq('id', assessmentId);
+
+      if (error) throw error;
+
+      setAssessments(prev => prev.filter(a => a.id !== assessmentId));
+      toast({
+        title: "Success",
+        description: "Assessment deleted successfully",
+      });
+    } catch (error) {
+      console.error('Error deleting assessment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete assessment",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFinishCourse = () => {
+    navigate(`/courses/${currentCourseId}`);
   };
 
   if (!canCreateCourse) {
@@ -117,7 +219,19 @@ export default function CreateCourse() {
             <CardTitle className="text-2xl">Create New Course</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="details">Course Details</TabsTrigger>
+                <TabsTrigger value="modules" disabled={!currentCourseId}>
+                  Modules {currentCourseId ? '' : '(Save first)'}
+                </TabsTrigger>
+                <TabsTrigger value="assessments" disabled={!currentCourseId}>
+                  Assessments {currentCourseId ? '' : '(Save first)'}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="details" className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="course_name">Course Name</Label>
                 <Input
@@ -229,22 +343,182 @@ export default function CreateCourse() {
                 )}
               </div>
 
-              <div className="flex justify-end space-x-4">
-                <Button type="button" variant="outline" onClick={() => navigate('/courses')}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={loading}>
-                  {loading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+                  <div className="flex justify-end space-x-4">
+                    <Button type="button" variant="outline" onClick={() => navigate('/courses')}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={loading}>
+                      {loading ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      {currentCourseId ? 'Update Course' : 'Create Course'}
+                    </Button>
+                  </div>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="modules" className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">Course Modules</h3>
+                  <Button onClick={handleAddModule}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Module
+                  </Button>
+                </div>
+
+                <div className="space-y-4">
+                  {modules.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">
+                      No modules added yet. Click "Add Module" to get started.
+                    </p>
                   ) : (
-                    <Save className="h-4 w-4 mr-2" />
+                    modules.map((module, index) => (
+                      <Card key={module.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h4 className="font-medium">{module.module_name}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {module.module_description}
+                              </p>
+                              <div className="flex items-center space-x-4 mt-2 text-xs text-muted-foreground">
+                                <span>Order: {module.module_order}</span>
+                                <span>Type: {module.content_type}</span>
+                                <span>Duration: {module.estimated_duration_minutes}min</span>
+                              </div>
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditModule(module)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteModule(module.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
                   )}
-                  Create Course
-                </Button>
-              </div>
-            </form>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button onClick={handleFinishCourse}>
+                    Continue to Course
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="assessments" className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">Course Assessments</h3>
+                  <Button onClick={handleAddAssessment}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Assessment
+                  </Button>
+                </div>
+
+                <div className="space-y-4">
+                  {assessments.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">
+                      No assessments added yet. Click "Add Assessment" to get started.
+                    </p>
+                  ) : (
+                    assessments.map((assessment) => (
+                      <Card key={assessment.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h4 className="font-medium">{assessment.title}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {assessment.description}
+                              </p>
+                              <div className="flex items-center space-x-4 mt-2 text-xs text-muted-foreground">
+                                <span>Type: {assessment.assessment_type}</span>
+                                <span>Passing: {assessment.passing_score}%</span>
+                                <span>Time: {assessment.time_limit_minutes}min</span>
+                                {assessment.is_mandatory && <span className="text-destructive">Mandatory</span>}
+                              </div>
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditAssessment(assessment)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteAssessment(assessment.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+
+                <div className="flex justify-end">
+                  <Button onClick={handleFinishCourse}>
+                    Finish & View Course
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
+
+        {/* Dialogs */}
+        <Dialog open={showModuleDialog} onOpenChange={setShowModuleDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {editingModule ? 'Edit Module' : 'Add New Module'}
+              </DialogTitle>
+            </DialogHeader>
+            {currentCourseId && (
+              <ModuleDialog
+                courseId={currentCourseId}
+                module={editingModule}
+                moduleOrder={modules.length + 1}
+                onSave={handleModuleSave}
+                onClose={() => setShowModuleDialog(false)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showAssessmentDialog} onOpenChange={setShowAssessmentDialog}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingAssessment ? 'Edit Assessment' : 'Add New Assessment'}
+              </DialogTitle>
+            </DialogHeader>
+            {currentCourseId && (
+              <AssessmentDialog
+                courseId={currentCourseId}
+                assessment={editingAssessment}
+                onClose={() => setShowAssessmentDialog(false)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
