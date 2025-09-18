@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from '@/hooks/use-toast';
 import { MainNav } from '@/components/navigation/MainNav';
 import { AssessmentTemplateManager } from '@/components/courses/AssessmentTemplateManager';
+import { EnhancedModuleDialog } from '@/components/courses/EnhancedModuleDialog';
 import { 
   ArrowLeft, 
   Plus, 
@@ -567,14 +568,6 @@ export default function CourseBuilder() {
                           size="sm"
                           onClick={() => {
                             setEditingModule(module);
-                            setModuleForm({
-                              module_name: module.module_name,
-                              module_description: module.module_description || '',
-                              content_type: module.content_type,
-                              content_url: module.content_url || '',
-                              content_path: module.content_path || '',
-                              estimated_duration_minutes: module.estimated_duration_minutes
-                            });
                             setModuleDialogOpen(true);
                           }}
                         >

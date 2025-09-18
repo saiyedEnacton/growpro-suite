@@ -25,6 +25,7 @@ export default function CourseDetails() {
   const [modules, setModules] = useState([]);
   const [enrollment, setEnrollment] = useState(null);
   const [assessments, setAssessments] = useState([]);
+  const [assessmentTemplates, setAssessmentTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
 
@@ -60,17 +61,24 @@ export default function CourseDetails() {
         .eq('employee_id', profile?.id)
         .single();
 
-      // Fetch assessments
+      // Fetch assessments (user's assessment results)
       const { data: assessmentsData } = await supabase
         .from('course_assessments')
         .select('*')
         .eq('course_id', courseId)
         .eq('employee_id', profile?.id);
 
+      // Fetch assessment templates (available assessments for the course)
+      const { data: templateData } = await supabase
+        .from('assessment_templates')
+        .select('*')
+        .eq('course_id', courseId);
+
       setCourse(courseData);
       setModules(modulesData || []);
       setEnrollment(enrollmentData);
       setAssessments(assessmentsData || []);
+      setAssessmentTemplates(templateData || []);
     } catch (error) {
       console.error('Error fetching course data:', error);
       toast({
@@ -194,7 +202,7 @@ export default function CourseDetails() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate(`/course-builder/${courseId}`)}
+                      onClick={() => navigate(`/courses/${courseId}/edit`)}
                     >
                       <Edit className="h-4 w-4 mr-2" />
                       Edit Course
@@ -292,42 +300,38 @@ export default function CourseDetails() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                  {assessments.length === 0 ? (
-                    <div className="space-y-4">
-                      <p className="text-muted-foreground text-center py-4">
-                        No assessments taken yet.
-                      </p>
-                      {/* Show default assessment option if no assessments exist */}
-                      <CourseAssessment
-                        id="default-assessment"
-                        courseId={courseId!}
-                        employeeId={profile?.id!}
-                        assessmentType="Course Assessment"
-                        isMandatory={true}
-                        passingScore={70}
-                        onRetakeAssessment={handleTakeAssessment}
-                      />
-                    </div>
+                  {assessmentTemplates.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">
+                      No assessments available for this course.
+                    </p>
                   ) : (
-                    assessments.map((assessment) => (
-                      <CourseAssessment
-                        key={assessment.id}
-                        id={assessment.id}
-                        courseId={courseId!}
-                        employeeId={profile?.id!}
-                        assessmentType={assessment.assessment_type}
-                        status={assessment.status}
-                        totalScore={assessment.total_score}
-                        percentage={assessment.percentage}
-                        passingScore={assessment.passing_score}
-                        isMandatory={assessment.is_mandatory}
-                        grade={assessment.grade}
-                        feedback={assessment.feedback}
-                        certificateUrl={assessment.certificate_url}
-                        completionDate={assessment.completion_date}
-                        onRetakeAssessment={handleTakeAssessment}
-                      />
-                    ))
+                    assessmentTemplates.map((template) => {
+                      // Find user's assessment result for this template
+                      const userAssessment = assessments.find(a => a.assessment_template_id === template.id);
+                      
+                      return (
+                        <CourseAssessment
+                          key={template.id}
+                          id={template.id}
+                          courseId={courseId!}
+                          employeeId={profile?.id!}
+                          assessmentType={template.assessment_type}
+                          status={userAssessment?.status}
+                          totalScore={userAssessment?.total_score}
+                          percentage={userAssessment?.percentage}
+                          passingScore={template.passing_score}
+                          isMandatory={template.is_mandatory}
+                          grade={userAssessment?.grade}
+                          feedback={userAssessment?.feedback}
+                          certificateUrl={userAssessment?.certificate_url}
+                          completionDate={userAssessment?.completion_date}
+                          title={template.title}
+                          description={template.description}
+                          timeLimit={template.time_limit_minutes}
+                          onRetakeAssessment={handleTakeAssessment}
+                        />
+                      );
+                    })
                   )}
               </CardContent>
             </Card>

@@ -71,6 +71,22 @@ export function AssessmentDialog({ courseId, assessment, onClose }: AssessmentDi
       return;
     }
 
+    // For Quiz type, enforce that questions must exist after saving
+    if (form.assessment_type === 'quiz' && assessment && assessment.id) {
+      const { count } = await supabase
+        .from('assessment_questions')
+        .select('*', { count: 'exact', head: true })
+        .eq('assessment_template_id', assessment.id);
+        
+      if (!count || count === 0) {
+        toast({
+          title: "Warning",
+          description: "Quiz assessments should have at least one question. Please add questions in the Questions tab.",
+          variant: "default",
+        });
+      }
+    }
+
     try {
       setSaving(true);
       

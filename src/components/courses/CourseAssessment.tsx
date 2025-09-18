@@ -9,6 +9,9 @@ interface CourseAssessmentProps {
   courseId: string;
   employeeId: string;
   assessmentType: string;
+  title?: string;
+  description?: string;
+  timeLimit?: number;
   status?: string;
   totalScore?: number;
   percentage?: number;
@@ -25,6 +28,9 @@ interface CourseAssessmentProps {
 export const CourseAssessment = ({
   id,
   assessmentType,
+  title,
+  description,
+  timeLimit,
   status = 'Pending',
   totalScore = 0,
   percentage = 0,
@@ -94,8 +100,17 @@ export const CourseAssessment = ({
         </div>
         
         <CardTitle className="text-lg font-semibold">
-          {assessmentType}
+          {title || assessmentType}
         </CardTitle>
+        {description && (
+          <p className="text-sm text-muted-foreground mt-1">{description}</p>
+        )}
+        {timeLimit && (
+          <div className="flex items-center text-sm text-muted-foreground mt-2">
+            <Clock className="w-4 h-4 mr-1" />
+            <span>{timeLimit} minutes</span>
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="space-y-4">

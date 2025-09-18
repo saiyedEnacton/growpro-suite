@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { ModuleDialog } from '@/components/courses/ModuleDialog';
+import { EnhancedModuleDialog } from '@/components/courses/EnhancedModuleDialog';
 import { AssessmentDialog } from '@/components/courses/AssessmentDialog';
 
 export default function CreateCourse() {
@@ -485,14 +486,14 @@ export default function CreateCourse() {
 
         {/* Dialogs */}
         <Dialog open={showModuleDialog} onOpenChange={setShowModuleDialog}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingModule ? 'Edit Module' : 'Add New Module'}
               </DialogTitle>
             </DialogHeader>
             {currentCourseId && (
-              <ModuleDialog
+              <EnhancedModuleDialog
                 courseId={currentCourseId}
                 module={editingModule}
                 moduleOrder={modules.length + 1}
