@@ -14,8 +14,106 @@ export type Database = {
   }
   public: {
     Tables: {
+      assessment_questions: {
+        Row: {
+          assessment_template_id: string
+          created_at: string
+          explanation: string | null
+          id: string
+          points: number
+          question_order: number
+          question_text: string
+          question_type: string
+          updated_at: string
+        }
+        Insert: {
+          assessment_template_id: string
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          points?: number
+          question_order: number
+          question_text: string
+          question_type?: string
+          updated_at?: string
+        }
+        Update: {
+          assessment_template_id?: string
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          points?: number
+          question_order?: number
+          question_text?: string
+          question_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_assessment_questions_template"
+            columns: ["assessment_template_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_templates: {
+        Row: {
+          assessment_type: string
+          course_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          instructions: string | null
+          is_mandatory: boolean
+          passing_score: number
+          time_limit_minutes: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assessment_type?: string
+          course_id: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          instructions?: string | null
+          is_mandatory?: boolean
+          passing_score?: number
+          time_limit_minutes?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assessment_type?: string
+          course_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          instructions?: string | null
+          is_mandatory?: boolean
+          passing_score?: number
+          time_limit_minutes?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_assessment_templates_course"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_assessments: {
         Row: {
+          assessment_template_id: string | null
           assessment_type: string
           assessor_id: string | null
           certificate_url: string | null
@@ -34,6 +132,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assessment_template_id?: string | null
           assessment_type?: string
           assessor_id?: string | null
           certificate_url?: string | null
@@ -52,6 +151,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assessment_template_id?: string | null
           assessment_type?: string
           assessor_id?: string | null
           certificate_url?: string | null
@@ -539,6 +639,41 @@ export type Database = {
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      question_options: {
+        Row: {
+          created_at: string
+          id: string
+          is_correct: boolean
+          option_order: number
+          option_text: string
+          question_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          option_order: number
+          option_text: string
+          question_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          option_order?: number
+          option_text?: string
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_question_options_question"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_questions"
             referencedColumns: ["id"]
           },
         ]

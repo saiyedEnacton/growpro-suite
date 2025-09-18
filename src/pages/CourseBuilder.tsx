@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { MainNav } from '@/components/navigation/MainNav';
+import { AssessmentTemplateManager } from '@/components/courses/AssessmentTemplateManager';
 import { 
   ArrowLeft, 
   Plus, 
@@ -69,17 +70,14 @@ export default function CourseBuilder() {
 
   const [course, setCourse] = useState<Course | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
-  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [assessmentCount, setAssessmentCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // Dialog states
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
-  const [assessmentDialogOpen, setAssessmentDialogOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
-  const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
 
-  // Form states
   const [moduleForm, setModuleForm] = useState({
     module_name: '',
     module_description: '',
@@ -87,12 +85,6 @@ export default function CourseBuilder() {
     content_url: '',
     content_path: '',
     estimated_duration_minutes: 60
-  });
-
-  const [assessmentForm, setAssessmentForm] = useState({
-    assessment_type: 'Module Assessment',
-    passing_score: 70,
-    is_mandatory: true
   });
 
   useEffect(() => {
@@ -146,20 +138,15 @@ export default function CourseBuilder() {
 
       if (modulesError) throw modulesError;
 
-      // Fetch assessments (simplified view)
-      const { data: assessmentsData, error: assessmentsError } = await supabase
-        .from('course_assessments')
-        .select('*')
-        .eq('course_id', courseId)
-        .limit(10);
-
-      if (assessmentsError && assessmentsError.code !== 'PGRST116') {
-        throw assessmentsError;
-      }
+      // Fetch assessment count
+      const { count: assessmentCount } = await supabase
+        .from('assessment_templates')
+        .select('*', { count: 'exact', head: true })
+        .eq('course_id', courseId);
 
       setCourse(courseData);
       setModules(modulesData || []);
-      setAssessments(assessmentsData || []);
+      setAssessmentCount(assessmentCount || 0);
 
     } catch (error: any) {
       console.error('Error fetching course data:', error);
@@ -381,7 +368,7 @@ export default function CourseBuilder() {
           <TabsList>
             <TabsTrigger value="details">Course Details</TabsTrigger>
             <TabsTrigger value="modules">Modules ({modules.length})</TabsTrigger>
-            <TabsTrigger value="assessments">Assessments ({assessments.length})</TabsTrigger>
+            <TabsTrigger value="assessments">Assessments ({assessmentCount})</TabsTrigger>
           </TabsList>
 
           {/* Course Details Tab */}
@@ -610,21 +597,7 @@ export default function CourseBuilder() {
 
           {/* Assessments Tab */}
           <TabsContent value="assessments" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Course Assessments</h3>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Assessment
-              </Button>
-            </div>
-
-            <Card>
-              <CardContent className="p-6 text-center text-muted-foreground">
-                <CheckCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Assessment management coming soon</p>
-                <p className="text-sm">For now, assessments are created automatically when students take them.</p>
-              </CardContent>
-            </Card>
+            <AssessmentTemplateManager courseId={courseId!} />
           </TabsContent>
         </Tabs>
       </div>
