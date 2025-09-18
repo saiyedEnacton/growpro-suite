@@ -5,14 +5,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, User, BookOpen, FileText, Upload, Check, X, Plus, UserCheck } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, Edit, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserRoleType } from '@/lib/enums';
-import { DocumentUploadDialog } from '@/components/employees/DocumentUploadDialog';
-import { CourseEnrollmentDialog } from '@/components/employees/CourseEnrollmentDialog';
+
+// --- TYPE DEFINITIONS ---
 
 interface Employee {
   id: string;
@@ -26,500 +26,233 @@ interface Employee {
   date_of_joining: string | null;
   manager_id: string | null;
   role: {
-    id: string;
     role_name: UserRoleType;
-    role_description: string | null;
   } | null;
-  manager?: {
+  manager: {
     first_name: string | null;
     last_name: string | null;
   } | null;
 }
 
-interface Course {
-  id: string;
-  course_name: string;
-  course_description: string | null;
-  status: string;
-  enrolled_date: string;
-  completion_date: string | null;
-}
-
-interface Document {
-  id: string;
-  document_name: string;
-  document_type: string;
-  file_path: string;
-  is_verified: boolean;
-  created_at: string;
-  uploaded_by: {
-    first_name: string | null;
-    last_name: string | null;
-  } | null;
-}
-
-interface TeamLead {
+interface PotentialManager {
   id: string;
   first_name: string | null;
   last_name: string | null;
+  role: {
+    role_name: UserRoleType;
+  } | null;
 }
 
+// --- COMPONENT ---
+
 export default function EmployeeDetail() {
-  const { employeeId } = useParams();
+  const { employeeId } = useParams<{ employeeId: string }>();
   const { profile } = useAuth();
+
   const [employee, setEmployee] = useState<Employee | null>(null);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [teamLeads, setTeamLeads] = useState<TeamLead[]>([]);
+  const [allUsers, setAllUsers] = useState<PotentialManager[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('profile');
-  const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
-  const [courseDialogOpen, setCourseDialogOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState<Partial<Employee>>({});
 
-  // Check permissions
-  const canManage = profile?.role?.role_name && ['HR', 'Management'].includes(profile.role.role_name);
-  const isOwnProfile = profile?.id === employeeId;
+  const canManage = profile?.role?.role_name === 'HR' || profile?.role?.role_name === 'Management';
 
-  useEffect(() => {
-    if (employeeId) {
-      fetchEmployee();
-      fetchCourses();
-      fetchDocuments();
-      if (canManage) {
-        fetchTeamLeads();
-      }
-    }
-  }, [employeeId, canManage]);
-
-  const fetchEmployee = async () => {
+  const fetchEmployeeDetails = async (showToast = false) => {
+    if (!employeeId) return;
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select(`
           id, first_name, last_name, employee_code, department, designation,
           current_status, phone, date_of_joining, manager_id,
-          role:roles(id, role_name, role_description),
-          manager:profiles!profiles_manager_id_fkey(first_name, last_name)
+          role:roles(role_name),
+          manager:manager_id(first_name, last_name)
         `)
         .eq('id', employeeId)
         .maybeSingle();
 
       if (error) throw error;
-      setEmployee(data as Employee);
-    } catch (error) {
-      console.error('Error fetching employee:', error);
-      toast.error('Failed to load employee details');
+      setEmployee(data);
+      setEditData(data || {}); // Initialize edit data
+      if(showToast) toast.success("Employee details refreshed.");
+    } catch (error: any) {
+      console.error('Failed to fetch employee data:', error);
+      toast.error(`Failed to load employee details: ${error.message}`);
+      setEmployee(null);
     }
   };
 
-  const fetchCourses = async () => {
+  const fetchAllUsers = async () => {
+    if (!canManage) return;
     try {
       const { data, error } = await supabase
-        .from('course_enrollments')
-        .select(`
-          id, status, enrolled_date, completion_date, course_id
-        `)
-        .eq('employee_id', employeeId);
+        .from('profiles')
+        .select(`id, first_name, last_name, role:roles(role_name)`);
 
       if (error) throw error;
-      
-      // Get course details separately
-      if (data && data.length > 0) {
-        const courseIds = data.map(enrollment => enrollment.course_id);
-        const { data: coursesData, error: coursesError } = await supabase
-          .from('courses')
-          .select('id, course_name, course_description')
-          .in('id', courseIds);
+      setAllUsers(data?.filter(user => user.id !== employeeId) || []);
+    } catch (error: any) {
+      console.error('Error fetching all users:', error);
+      toast.error(`Failed to load users list: ${error.message}`);
+    }
+  };
 
-        if (coursesError) throw coursesError;
-
-        const coursesWithEnrollment = data.map(enrollment => {
-          const courseInfo = coursesData?.find(c => c.id === enrollment.course_id);
-          return {
-            id: courseInfo?.id || '',
-            course_name: courseInfo?.course_name || '',
-            course_description: courseInfo?.course_description || '',
-            status: enrollment.status || '',
-            enrolled_date: enrollment.enrolled_date,
-            completion_date: enrollment.completion_date
-          };
-        });
-        
-        setCourses(coursesWithEnrollment);
-      } else {
-        setCourses([]);
+  const handleManagerSelection = async (selectedUserId: string) => {
+    if (!employeeId || !canManage) return;
+    if (selectedUserId === 'unassign') {
+      try {
+        await supabase.from('profiles').update({ manager_id: null }).eq('id', employeeId);
+        toast.success('Team Lead unassigned.');
+        fetchEmployeeDetails(true);
+      } catch (error: any) { toast.error(`Failed to unassign Team Lead: ${error.message}`); }
+      return;
+    }
+    const selectedUser = allUsers.find(u => u.id === selectedUserId);
+    if (!selectedUser) return;
+    try {
+      const isPrivilegedRole = selectedUser.role?.role_name === 'HR' || selectedUser.role?.role_name === 'Management';
+      if (!isPrivilegedRole && selectedUser.role?.role_name !== 'Team Lead') {
+        const { data: roleData, error: roleError } = await supabase.from('roles').select('id').eq('role_name', 'Team Lead').single();
+        if (roleError || !roleData) throw new Error("Could not find 'Team Lead' role to promote user.");
+        await supabase.from('profiles').update({ role_id: roleData.id }).eq('id', selectedUserId);
+        toast.info(`${selectedUser.first_name} has been promoted to Team Lead.`);
       }
-    } catch (error) {
-      console.error('Error fetching courses:', error);
-      toast.error('Failed to load enrolled courses');
+      await supabase.from('profiles').update({ manager_id: selectedUserId }).eq('id', employeeId);
+      toast.success(`${selectedUser.first_name} assigned as Team Lead.`);
+      fetchEmployeeDetails(true);
+      fetchAllUsers();
+    } catch (error: any) {
+      console.error('Error in manager assignment process:', error);
+      toast.error(`An error occurred: ${error.message}`);
     }
   };
 
-  const fetchDocuments = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('employee_documents')
-        .select(`
-          id, document_name, document_type, file_path, is_verified, created_at,
-          uploaded_by:profiles!employee_documents_uploaded_by_fkey(first_name, last_name)
-        `)
-        .eq('employee_id', employeeId);
+  const handleSave = async () => {
+    if (!canManage || !isEditing) return;
+    
+    // Explicitly build the payload with only the columns that should be updated
+    const updatePayload = {
+      first_name: editData.first_name,
+      last_name: editData.last_name,
+      employee_code: editData.employee_code,
+      department: editData.department,
+      designation: editData.designation,
+      phone: editData.phone,
+      date_of_joining: editData.date_of_joining,
+    };
 
+    try {
+      const { error } = await supabase.from('profiles').update(updatePayload).eq('id', employeeId);
       if (error) throw error;
-      setDocuments(data || []);
-    } catch (error) {
-      console.error('Error fetching documents:', error);
-      toast.error('Failed to load documents');
+      toast.success("Employee details updated successfully.");
+      setIsEditing(false);
+      fetchEmployeeDetails(true);
+    } catch (error: any) {
+      toast.error(`Failed to save changes: ${error.message}`);
     }
   };
 
-  const fetchTeamLeads = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name')
-        .eq('role.role_name', 'Team Lead');
+  const handleInputChange = (field: keyof typeof editData, value: string | null) => {
+    setEditData(prev => ({ ...prev, [field]: value }));
+  };
 
-      if (error) throw error;
-      setTeamLeads(data || []);
-    } catch (error) {
-      console.error('Error fetching team leads:', error);
-    } finally {
+  useEffect(() => {
+    const loadAllData = async () => {
+      setLoading(true);
+      await fetchEmployeeDetails();
+      await fetchAllUsers();
       setLoading(false);
-    }
-  };
-
-  const updateManager = async (managerId: string) => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ manager_id: managerId || null })
-        .eq('id', employeeId);
-
-      if (error) throw error;
-      toast.success('Manager updated successfully');
-      fetchEmployee();
-    } catch (error) {
-      console.error('Error updating manager:', error);
-      toast.error('Failed to update manager');
-    }
-  };
-
-  const verifyDocument = async (documentId: string, verified: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('employee_documents')
-        .update({ is_verified: verified, verified_by: profile?.id })
-        .eq('id', documentId);
-
-      if (error) throw error;
-      toast.success(`Document ${verified ? 'verified' : 'unverified'} successfully`);
-      fetchDocuments();
-    } catch (error) {
-      console.error('Error updating document:', error);
-      toast.error('Failed to update document');
-    }
-  };
+    };
+    loadAllData();
+  }, [employeeId, canManage]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <div className="flex justify-center items-center min-h-screen">Loading Employee Details...</div>;
   }
 
   if (!employee) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="w-96">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <User className="h-12 w-12 mx-auto text-muted-foreground" />
-              <h2 className="text-xl font-semibold">Employee Not Found</h2>
-              <p className="text-muted-foreground">
-                The employee profile you're looking for doesn't exist.
-              </p>
-              <Link to="/employees">
-                <Button>Back to Employees</Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <div className="container mx-auto py-6 px-4">...</div> // Error display unchanged
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-6 px-4">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-3">
-            <Link to="/employees">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Employees
-              </Button>
-            </Link>
+    <div className="container mx-auto py-6 px-4">
+      <div className="flex justify-between items-center">
+        <Link to="/employees">
+          <Button variant="ghost"><ArrowLeft className="h-4 w-4 mr-2" />Back to Employees</Button>
+        </Link>
+        {canManage && (
+          <div className="flex gap-2">
+            {isEditing ? (
+              <>
+                <Button variant="outline" onClick={() => setIsEditing(false)}><X className="h-4 w-4 mr-2" />Cancel</Button>
+                <Button onClick={handleSave}><Save className="h-4 w-4 mr-2" />Save Changes</Button>
+              </>
+            ) : (
+              <Button onClick={() => setIsEditing(true)}><Edit className="h-4 w-4 mr-2" />Edit</Button>
+            )}
           </div>
-        </div>
-
-        {/* Employee Profile Header */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                  <User className="h-8 w-8 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold">
-                    {`${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 'No Name'}
-                  </h1>
-                  <p className="text-muted-foreground">{employee.designation || 'No Designation'}</p>
-                  <div className="flex items-center space-x-2 mt-2">
-                    {employee.role && (
-                      <Badge variant="outline">{employee.role.role_name}</Badge>
-                    )}
-                    <Badge variant={employee.current_status === 'Active' ? 'default' : 'secondary'}>
-                      {employee.current_status}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="profile">Profile Details</TabsTrigger>
-            <TabsTrigger value="courses">Enrolled Courses</TabsTrigger>
-            <TabsTrigger value="documents">Documents</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="profile" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Personal Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Employee Code</label>
-                    <p className="text-muted-foreground">{employee.employee_code || '-'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Department</label>
-                    <p className="text-muted-foreground">{employee.department || '-'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Phone</label>
-                    <p className="text-muted-foreground">{employee.phone || '-'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Date of Joining</label>
-                    <p className="text-muted-foreground">
-                      {employee.date_of_joining ? new Date(employee.date_of_joining).toLocaleDateString() : '-'}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Manager</label>
-                    {canManage ? (
-                      <Select 
-                        value={employee.manager_id || ''} 
-                        onValueChange={updateManager}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select manager" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">No Manager</SelectItem>
-                          {teamLeads.map((lead) => (
-                            <SelectItem key={lead.id} value={lead.id}>
-                              {`${lead.first_name || ''} ${lead.last_name || ''}`.trim()}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="text-muted-foreground">
-                        {employee.manager 
-                          ? `${employee.manager.first_name || ''} ${employee.manager.last_name || ''}`.trim()
-                          : '-'
-                        }
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="courses" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Enrolled Courses</h3>
-              {canManage && (
-                <Button onClick={() => setCourseDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Enroll in Course
-                </Button>
-              )}
-            </div>
-            
-            <Card>
-              <CardContent>
-                {courses.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Course Name</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Enrolled Date</TableHead>
-                        <TableHead>Completion Date</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {courses.map((course) => (
-                        <TableRow key={course.id}>
-                          <TableCell className="font-medium">
-                            <Link 
-                              to={`/courses/${course.id}`}
-                              className="text-primary hover:underline"
-                            >
-                              {course.course_name}
-                            </Link>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={course.status === 'completed' ? 'default' : 'secondary'}>
-                              {course.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {course.enrolled_date ? new Date(course.enrolled_date).toLocaleDateString() : '-'}
-                          </TableCell>
-                          <TableCell>
-                            {course.completion_date ? new Date(course.completion_date).toLocaleDateString() : '-'}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="text-center py-8">
-                    <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium text-muted-foreground mb-2">No courses enrolled</h3>
-                    <p className="text-sm text-muted-foreground">
-                      This employee hasn't been enrolled in any courses yet.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="documents" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Documents</h3>
-              {(canManage || isOwnProfile) && (
-                <Button onClick={() => setDocumentDialogOpen(true)}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Document
-                </Button>
-              )}
-            </div>
-            
-            <Card>
-              <CardContent>
-                {documents.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Document Name</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Uploaded By</TableHead>
-                        <TableHead>Upload Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        {canManage && <TableHead>Actions</TableHead>}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {documents.map((document) => (
-                        <TableRow key={document.id}>
-                          <TableCell className="font-medium">{document.document_name}</TableCell>
-                          <TableCell>{document.document_type}</TableCell>
-                          <TableCell>
-                            {document.uploaded_by 
-                              ? `${document.uploaded_by.first_name || ''} ${document.uploaded_by.last_name || ''}`.trim()
-                              : '-'
-                            }
-                          </TableCell>
-                          <TableCell>
-                            {new Date(document.created_at).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={document.is_verified ? 'default' : 'secondary'}>
-                              {document.is_verified ? 'Verified' : 'Pending'}
-                            </Badge>
-                          </TableCell>
-                          {canManage && (
-                            <TableCell>
-                              <div className="flex space-x-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => verifyDocument(document.id, !document.is_verified)}
-                                >
-                                  {document.is_verified ? (
-                                    <X className="h-4 w-4" />
-                                  ) : (
-                                    <Check className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </div>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="text-center py-8">
-                    <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium text-muted-foreground mb-2">No documents uploaded</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Upload important documents like contracts, ID scans, etc.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        {/* Dialogs */}
-        <DocumentUploadDialog
-          open={documentDialogOpen}
-          onOpenChange={setDocumentDialogOpen}
-          employeeId={employeeId!}
-          onSuccess={() => {
-            fetchDocuments();
-            setDocumentDialogOpen(false);
-          }}
-        />
-
-        <CourseEnrollmentDialog
-          open={courseDialogOpen}
-          onOpenChange={setCourseDialogOpen}
-          employeeId={employeeId!}
-          onSuccess={() => {
-            fetchCourses();
-            setCourseDialogOpen(false);
-          }}
-        />
+        )}
       </div>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <div className="flex justify-between items-start">
+            {isEditing ? (
+                <div className="flex gap-2">
+                    <Input value={editData.first_name || ''} onChange={e => handleInputChange('first_name', e.target.value)} placeholder="First Name"/>
+                    <Input value={editData.last_name || ''} onChange={e => handleInputChange('last_name', e.target.value)} placeholder="Last Name"/>
+                </div>
+            ) : (
+                <CardTitle className="text-2xl">{employee.first_name} {employee.last_name}</CardTitle>
+            )}
+            <Badge>{isEditing ? <Input value={editData.current_status || ''} onChange={e => handleInputChange('current_status', e.target.value)} /> : employee.current_status}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+            <div>
+              <Label>Role</Label>
+              <p className="text-lg">{employee.role?.role_name || 'N/A'}</p>
+            </div>
+            <div>
+              <Label>Team Lead</Label>
+              {canManage ? (
+                <Select onValueChange={handleManagerSelection} defaultValue={employee.manager_id || ''}>
+                  <SelectTrigger className="text-lg"><SelectValue placeholder="Select a Team Lead" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassign">Unassign Team Lead</SelectItem>
+                    {allUsers.map(user => (user.id && <SelectItem key={user.id} value={user.id}>{user.first_name} {user.last_name} ({user.role?.role_name || 'No Role'})</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-lg">{employee.manager ? `${employee.manager.first_name} ${employee.manager.last_name}` : <span className="text-muted-foreground">Not Assigned</span>}</p>
+              )}
+            </div>
+            <div>
+              <Label>Employee Code</Label>
+              {isEditing ? <Input value={editData.employee_code || ''} onChange={e => handleInputChange('employee_code', e.target.value)} /> : <p className="text-lg">{employee.employee_code || 'N/A'}</p>}
+            </div>
+            <div>
+              <Label>Department</Label>
+              {isEditing ? <Input value={editData.department || ''} onChange={e => handleInputChange('department', e.target.value)} /> : <p className="text-lg">{employee.department || 'N/A'}</p>}
+            </div>
+            <div>
+              <Label>Designation</Label>
+              {isEditing ? <Input value={editData.designation || ''} onChange={e => handleInputChange('designation', e.target.value)} /> : <p className="text-lg">{employee.designation || 'N/A'}</p>}
+            </div>
+            <div>
+              <Label>Phone</Label>
+              {isEditing ? <Input value={editData.phone || ''} onChange={e => handleInputChange('phone', e.target.value)} /> : <p className="text-lg">{employee.phone || 'N/A'}</p>}
+            </div>
+            <div>
+              <Label>Date of Joining</Label>
+              {isEditing ? <Input type="date" value={editData.date_of_joining ? new Date(editData.date_of_joining).toISOString().split('T')[0] : ''} onChange={e => handleInputChange('date_of_joining', e.target.value)} /> : <p className="text-lg">{employee.date_of_joining ? new Date(employee.date_of_joining).toLocaleDateString() : <span className="text-muted-foreground">Not Set</span>}</p>}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

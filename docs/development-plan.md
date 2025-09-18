@@ -194,3 +194,26 @@ This work is broken down into the following epics and user stories.
     - A "Settings" menu item navigates to `/settings/profile`.
     - The page displays the user's own information from the `profiles` table.
     - The user can update their own `first_name`, `last_name`, `phone`, etc.
+
+---
+
+### **Epic 7: Advanced HR Features (Completed)**
+
+**Goal:** Provide HR and Management with advanced, in-place editing and management capabilities on the Employee Detail page.
+
+- **Story 7.1: Inline Editing for Employee Details**
+  - **As an HR user,** I want to be able to quickly edit an employee's information directly on their detail page.
+  - **Functionality:**
+    - An "Edit" button is available on the employee detail page for HR and Management roles.
+    - Clicking "Edit" transforms the employee's data fields (Name, Department, Designation, etc.) into editable input boxes.
+    - A "Save" button commits all changes to the database.
+    - A "Cancel" button discards all changes and returns to the read-only view.
+
+- **Story 7.2: Dynamic Team Lead Promotion and Assignment**
+  - **As an HR user,** I want a seamless way to assign a Team Lead and promote employees if necessary.
+  - **Functionality:**
+    - The "Team Lead" field on the employee detail page is a dropdown list of all other employees in the system.
+    - When an HR user selects an employee from the dropdown:
+      - If the selected employee is not already HR or Management, their role is automatically promoted to "Team Lead". A notification confirms the promotion.
+      - The selected employee's ID is then saved as the `manager_id` for the employee being viewed.
+    - This combines the act of promotion and assignment into a single, efficient user action.

@@ -65,6 +65,9 @@ export function AddEmployeeDialog({ open, onOpenChange, onSuccess }: AddEmployee
     }
 
     setLoading(true);
+    // Save the current session
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+
     try {
       // Create user in Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -105,6 +108,16 @@ export function AddEmployeeDialog({ open, onOpenChange, onSuccess }: AddEmployee
       console.error('Error creating employee:', error);
       toast.error(error.message || 'Failed to create employee');
     } finally {
+      // Restore the original session
+      if (currentSession) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: currentSession.access_token,
+          refresh_token: currentSession.refresh_token,
+        });
+        if (sessionError) {
+          toast.error("Could not restore session. Please refresh the page.");
+        }
+      }
       setLoading(false);
     }
   };
