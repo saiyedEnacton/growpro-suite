@@ -127,7 +127,43 @@ export default function CourseDetails() {
   };
 
   const handleTakeAssessment = (assessmentId: string) => {
-    navigate(`/courses/${courseId}/assessments/${assessmentId}`);
+    const template = assessmentTemplates.find(t => t.id === assessmentId);
+    if (!template) return;
+
+    if (template.assessment_type === 'quiz') {
+      navigate(`/courses/${courseId}/assessments/${template.id}`);
+    } else {
+      toast({
+        title: "Coming Soon!",
+        description: `The '${template.assessment_type}' assessment type is not yet implemented.`,
+        variant: "default",
+      });
+    }
+  };
+
+  const handleMarkAsComplete = async (assessmentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('course_assessments')
+        .update({ status: 'Completed', completion_date: new Date().toISOString() })
+        .eq('assessment_template_id', assessmentId)
+        .eq('employee_id', profile.id);
+
+      if (error) throw error;
+
+      await fetchCourseData();
+      toast({
+        title: "Success",
+        description: "Assessment marked as complete."
+      });
+    } catch (error) {
+      console.error('Error marking as complete:', error);
+      toast({
+        title: "Error",
+        description: "Failed to mark assessment as complete.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Check if user can manage courses
@@ -329,6 +365,7 @@ export default function CourseDetails() {
                           description={template.description}
                           timeLimit={template.time_limit_minutes}
                           onRetakeAssessment={handleTakeAssessment}
+                          onMarkAsComplete={handleMarkAsComplete}
                         />
                       );
                     })

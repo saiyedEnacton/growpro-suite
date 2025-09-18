@@ -36,7 +36,7 @@ export function ModuleDialog({ courseId, module, moduleOrder, onSave, onClose }:
   const [form, setForm] = useState({
     module_name: '',
     module_description: '',
-    content_type: 'text',
+    content_type: 'mixed_content',
     content_url: '',
     content_path: '',
     estimated_duration_minutes: 60
@@ -47,7 +47,7 @@ export function ModuleDialog({ courseId, module, moduleOrder, onSave, onClose }:
       setForm({
         module_name: module.module_name,
         module_description: module.module_description || '',
-        content_type: module.content_type || 'text',
+        content_type: module.content_type || 'mixed_content',
         content_url: module.content_url || '',
         content_path: module.content_path || '',
         estimated_duration_minutes: module.estimated_duration_minutes || 60

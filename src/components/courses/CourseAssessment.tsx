@@ -23,6 +23,7 @@ interface CourseAssessmentProps {
   completionDate?: string;
   onRetakeAssessment?: (assessmentId: string) => void;
   onViewCertificate?: (certificateUrl: string) => void;
+  onMarkAsComplete?: (assessmentId: string) => void;
 }
 
 export const CourseAssessment = ({
@@ -42,6 +43,7 @@ export const CourseAssessment = ({
   completionDate,
   onRetakeAssessment,
   onViewCertificate,
+  onMarkAsComplete,
 }: CourseAssessmentProps) => {
   const isPassed = percentage >= passingScore;
   const isCompleted = status === 'Completed';
@@ -75,6 +77,35 @@ export const CourseAssessment = ({
         return 'bg-error text-error-foreground';
     }
   };
+
+  if (assessmentType === 'project') {
+    return (
+      <Card className="hover:shadow-md transition-all duration-200">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">{title || assessmentType}</CardTitle>
+          {description && (
+            <p className="text-sm text-muted-foreground mt-1">{description}</p>
+          )}
+        </CardHeader>
+        <CardContent>
+          {status !== 'Completed' ? (
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={() => onMarkAsComplete?.(id)}
+            >
+              Mark as Complete
+            </Button>
+          ) : (
+            <div className="flex items-center text-sm text-success">
+              <CheckCircle className="w-4 h-4 mr-2" />
+              <span>Completed</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="hover:shadow-md transition-all duration-200">
@@ -161,7 +192,7 @@ export const CourseAssessment = ({
           <Button
             size="sm"
             className="flex-1"
-            onClick={() => window.location.href = `/assessment/${id}`}
+            onClick={() => onRetakeAssessment?.(id)}
           >
             Start Assessment
           </Button>
@@ -171,7 +202,7 @@ export const CourseAssessment = ({
             <Button 
               variant="outline" 
               className="flex-1"
-              onClick={() => window.location.href = `/assessment/${id}`}
+              onClick={() => onRetakeAssessment?.(id)}
             >
               Retake Assessment
             </Button>

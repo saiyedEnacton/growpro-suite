@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { BookOpen, Award, CheckCircle, Clock } from 'lucide-react';
+import { BookOpen, Award, CheckCircle, Clock, Star } from 'lucide-react';
 
 interface CourseEnrollmentProps {
   courseId: string;
@@ -26,17 +26,52 @@ interface CourseEnrollmentProps {
 export const CourseEnrollment = ({
   courseId,
   courseName,
+  isCompleted = false,
+  completionDate,
+  ...props
+}: CourseEnrollmentProps) => {
+  if (isCompleted) {
+    return (
+      <Card className="bg-gradient-to-br from-background to-muted/50 border-green-500/30">
+        <CardContent className="p-6 text-center space-y-4">
+          <Award className="w-16 h-16 text-yellow-500 mx-auto animate-pulse" />
+          <h2 className="text-2xl font-bold">Congratulations!</h2>
+          <p className="text-muted-foreground">
+            You have successfully completed the course:
+          </p>
+          <p className="text-lg font-semibold">{courseName}</p>
+          {completionDate && (
+            <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span>Completed on {new Date(completionDate).toLocaleDateString()}</span>
+            </div>
+          )}
+          <div className="pt-4">
+            <Button variant="outline">
+              <Star className="w-4 h-4 mr-2" />
+              Review Course
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return <InProgressCourse courseId={courseId} courseName={courseName} {...props} />;
+};
+
+const InProgressCourse = ({
+  courseId,
+  courseName,
   courseDescription,
   completionRule = 'pass_all_assessments',
   minimumPassingPercentage = 70,
   assessmentsCompleted = 0,
   totalAssessments = 0,
-  isCompleted = false,
   enrollmentDate,
-  completionDate,
   onViewModules,
   onTakeAssessment,
-}: CourseEnrollmentProps) => {
+}: Omit<CourseEnrollmentProps, 'isCompleted' | 'completionDate'>) => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -46,33 +81,23 @@ export const CourseEnrollment = ({
 
   const getCompletionRuleText = (rule: string) => {
     switch (rule) {
-      case 'pass_all_assessments':
-        return 'Pass all assessments to complete';
-      case 'pass_minimum_percentage':
-        return `Pass ${minimumPassingPercentage}% of assessments to complete`;
-      case 'pass_mandatory_only':
-        return 'Pass all mandatory assessments to complete';
-      default:
-        return 'Complete all requirements';
+      case 'pass_all_assessments': return 'Pass all assessments to complete';
+      case 'pass_minimum_percentage': return `Pass ${minimumPassingPercentage}% of assessments`;
+      case 'pass_mandatory_only': return 'Pass all mandatory assessments';
+      default: return 'Complete all requirements';
     }
   };
 
   const handleMarkComplete = async () => {
     if (!user) return;
-    
     setIsLoading(true);
     try {
       const { error } = await supabase
         .from('course_enrollments')
-        .update({
-          status: 'completed',
-          completion_date: new Date().toISOString(),
-        })
+        .update({ status: 'completed', completion_date: new Date().toISOString() })
         .eq('employee_id', user.id)
         .eq('course_id', courseId);
-
       if (error) throw error;
-      
       toast.success('Course marked as completed!');
     } catch (error) {
       toast.error('Failed to update course status');
@@ -86,85 +111,39 @@ export const CourseEnrollment = ({
     <Card className="hover:shadow-lg transition-all duration-300">
       <CardHeader>
         <div className="flex items-center justify-between mb-2">
-          <Badge variant={isCompleted ? 'default' : 'secondary'}>
-            {isCompleted ? 'Completed' : 'In Progress'}
-          </Badge>
-          {isCompleted && (
-            <Award className="w-5 h-5 text-warning fill-current" />
-          )}
-        </div>
-        
-        <CardTitle className="text-xl font-semibold">
-          {courseName}
-        </CardTitle>
-        
-        {courseDescription && (
-          <p className="text-sm text-muted-foreground">
-            {courseDescription}
-          </p>
-        )}
-      </CardHeader>
-
-      <CardContent className="space-y-6">
-        {/* Progress Section */}
-        <div className="space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Assessment Progress</span>
-            <span className="font-medium">
-              {assessmentsCompleted}/{totalAssessments} completed
-            </span>
-          </div>
-          <Progress value={completionPercentage} className="h-2" />
-          
-          <p className="text-xs text-muted-foreground">
-            {getCompletionRuleText(completionRule)}
-          </p>
-        </div>
-
-        {/* Enrollment Info */}
-        <div className="grid grid-cols-2 gap-4 text-sm">
+          <Badge variant="secondary">In Progress</Badge>
           {enrollmentDate && (
-            <div className="flex items-center space-x-2 text-muted-foreground">
-              <Clock className="w-4 h-4" />
+            <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+              <Clock className="w-3 h-3" />
               <span>Enrolled: {new Date(enrollmentDate).toLocaleDateString()}</span>
             </div>
           )}
-          
-          {completionDate && (
-            <div className="flex items-center space-x-2 text-success">
-              <CheckCircle className="w-4 h-4" />
-              <span>Completed: {new Date(completionDate).toLocaleDateString()}</span>
-            </div>
-          )}
+        </div>
+        <CardTitle className="text-xl font-semibold">{courseName}</CardTitle>
+      </CardHeader>
+
+      <CardContent className="space-y-6">
+        <div className="space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Assessment Progress</span>
+            <span className="font-medium">{assessmentsCompleted}/{totalAssessments}</span>
+          </div>
+          <Progress value={completionPercentage} className="h-2" />
+          <p className="text-xs text-muted-foreground">{getCompletionRuleText(completionRule)}</p>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex space-x-3">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={onViewModules}
-          >
+        <div className="flex space-x-3 pt-4 border-t">
+          <Button variant="outline" className="flex-1" onClick={onViewModules}>
             <BookOpen className="w-4 h-4 mr-2" />
             View Modules
           </Button>
-          
-          {!isCompleted && totalAssessments > 0 && (
-            <Button
-              className="flex-1"
-              onClick={onTakeAssessment}
-            >
-              Take Assessment
+          {totalAssessments > 0 ? (
+            <Button className="flex-1" onClick={onTakeAssessment}>
+              Go to Assessments
             </Button>
-          )}
-          
-          {!isCompleted && totalAssessments === 0 && (
-            <Button
-              className="flex-1"
-              onClick={handleMarkComplete}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Marking...' : 'Mark Complete'}
+          ) : (
+            <Button className="flex-1" onClick={handleMarkComplete} disabled={isLoading}>
+              {isLoading ? 'Marking...' : 'Mark as Complete'}
             </Button>
           )}
         </div>

@@ -153,19 +153,21 @@ export default function CourseBuilder() {
     }
   };
 
-  const handleSaveCourse = async (updatedCourse: Partial<Course>) => {
+  const handleSaveCourse = async () => {
     if (!course) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id, ...updateData } = course;
 
     try {
       setSaving(true);
       const { error } = await supabase
         .from('courses')
-        .update(updatedCourse)
+        .update(updateData)
         .eq('id', course.id);
 
       if (error) throw error;
 
-      setCourse({ ...course, ...updatedCourse });
       toast({
         title: "Success",
         description: "Course updated successfully.",
@@ -337,7 +339,6 @@ export default function CourseBuilder() {
                       value={course.difficulty_level}
                       onValueChange={(value) => {
                         setCourse({...course, difficulty_level: value});
-                        handleSaveCourse({difficulty_level: value});
                       }}
                     >
                       <SelectTrigger>
@@ -378,14 +379,13 @@ export default function CourseBuilder() {
                     checked={course.is_mandatory}
                     onCheckedChange={(checked) => {
                       setCourse({...course, is_mandatory: checked});
-                      handleSaveCourse({is_mandatory: checked});
                     }}
                   />
                   <Label htmlFor="is_mandatory">Mandatory Course</Label>
                 </div>
                 
                 <div className="flex justify-end mt-6">
-                  <Button onClick={() => handleSaveCourse(course)} disabled={saving}>
+                  <Button onClick={handleSaveCourse} disabled={saving}>
                     {saving ? 'Updating...' : 'Update Course'}
                   </Button>
                 </div>
@@ -450,58 +450,7 @@ export default function CourseBuilder() {
                           </div>
                           
                           {/* Display additional content */}
-                          <div className="ml-6 space-y-1">
-                            {/* Primary content URL */}
-                            {module.content_url && (() => {
-                              try {
-                                const parsed = JSON.parse(module.content_url);
-                                return (
-                                  <>
-                                    {parsed.url && (
-                                      <p className="text-xs text-muted-foreground">
-                                        📄 {parsed.url}
-                                      </p>
-                                    )}
-                                    {parsed.links && parsed.links.length > 0 && (
-                                      <div>
-                                        <p className="text-xs font-medium text-muted-foreground">Links:</p>
-                                        {parsed.links.map((link: any, i: number) => (
-                                          <p key={i} className="text-xs text-muted-foreground ml-2">
-                                            🔗 {link.name}: {link.url}
-                                          </p>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </>
-                                );
-                              } catch {
-                                return module.content_url ? (
-                                  <p className="text-xs text-muted-foreground">📄 {module.content_url}</p>
-                                ) : null;
-                              }
-                            })()}
-                            
-                            {/* Files */}
-                            {module.content_path && (() => {
-                              try {
-                                const parsed = JSON.parse(module.content_path);
-                                return parsed.files && parsed.files.length > 0 ? (
-                                  <div>
-                                    <p className="text-xs font-medium text-muted-foreground">Files:</p>
-                                    {parsed.files.map((file: any, i: number) => (
-                                      <p key={i} className="text-xs text-muted-foreground ml-2">
-                                        📎 {file.name}
-                                      </p>
-                                    ))}
-                                  </div>
-                                ) : null;
-                              } catch {
-                                return module.content_path ? (
-                                  <p className="text-xs text-muted-foreground">📎 {module.content_path}</p>
-                                ) : null;
-                              }
-                            })()}
-                          </div>
+                          
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">

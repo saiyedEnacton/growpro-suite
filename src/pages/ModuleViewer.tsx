@@ -79,81 +79,89 @@ export default function ModuleViewer() {
     if (!module) return null;
 
     const { content_type, content_url, content_path } = module;
-    
-    switch (content_type?.toLowerCase()) {
-      case 'video':
-        if (content_url) {
-          return (
-            <div className="aspect-video bg-black rounded-lg overflow-hidden">
-              <iframe
-                src={content_url}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          );
-        }
-        break;
-      
-      case 'document':
-      case 'pdf':
-        if (content_url) {
-          return (
-            <div className="space-y-4">
-              <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                <div className="text-center">
-                  <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">Document content</p>
-                  <Button asChild>
-                    <a href={content_url} target="_blank" rel="noopener noreferrer">
-                      <Download className="h-4 w-4 mr-2" />
-                      Download Document
-                    </a>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          );
-        }
-        break;
-      
-      case 'link':
-      case 'url':
-        if (content_url) {
-          return (
-            <div className="space-y-4">
-              <div className="p-6 bg-muted rounded-lg text-center">
-                <LinkIcon className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">External Resource</p>
-                <Button asChild>
-                  <a href={content_url} target="_blank" rel="noopener noreferrer">
-                    Open Link
-                    <LinkIcon className="h-4 w-4 ml-2" />
-                  </a>
-                </Button>
-              </div>
-            </div>
-          );
-        }
-        break;
-      
-      case 'text':
-      default:
-        return (
-          <div className="prose prose-gray dark:prose-invert max-w-none">
-            <div className="bg-muted/30 p-6 rounded-lg">
-              <p className="text-muted-foreground">
-                {content_path || 'No content available for this module.'}
-              </p>
-            </div>
-          </div>
-        );
+
+    let primaryUrl = '';
+    let additionalLinks: { name: string; url: string }[] = [];
+
+    if (content_type === 'mixed' && content_url) {
+      try {
+        const parsed = JSON.parse(content_url);
+        primaryUrl = parsed.url;
+        additionalLinks = parsed.links || [];
+      } catch {
+        primaryUrl = content_url; // Fallback for non-JSON
+      }
+    } else if (['link', 'url', 'video', 'pdf'].includes(content_type)) {
+      primaryUrl = content_url;
     }
 
     return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">Content not available</p>
+      <div className="space-y-6">
+        {primaryUrl ? (
+          <div className="aspect-video bg-muted rounded-lg overflow-hidden border">
+            <iframe
+              src={primaryUrl}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              title="Module Content"
+            />
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-muted/50 rounded-lg">
+            <p className="text-muted-foreground">No primary content for this module.</p>
+          </div>
+        )}
+
+        {additionalLinks.length > 0 && (
+          <div>
+            <h3 className="text-lg font-semibold mb-3">Additional Resources</h3>
+            <div className="space-y-2">
+              {additionalLinks.map((link, index) => (
+                <Card key={index}>
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <LinkIcon className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-medium">{link.name}</span>
+                    </div>
+                    <Button asChild variant="outline" size="sm">
+                      <a href={link.url} target="_blank" rel="noopener noreferrer">
+                        Open Link
+                      </a>
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {content_path && (() => {
+            try {
+              const parsed = JSON.parse(content_path);
+              return parsed.files && parsed.files.length > 0 ? (
+                <div className="pt-2">
+                  <h3 className="text-lg font-semibold mb-3">Downloads</h3>
+                  <div className="space-y-2">
+                    {parsed.files.map((file: any, i: number) => (
+                      <Card key={i}>
+                        <CardContent className="p-4 flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <Download className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-medium">{file.name}</span>
+                          </div>
+                          {/* In a real app, this would trigger a download, not open a URL */}
+                          <Button variant="outline" size="sm" disabled>
+                            Download
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              ) : null;
+            } catch { return null; }
+        })()}
       </div>
     );
   };

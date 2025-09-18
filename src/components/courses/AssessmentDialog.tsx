@@ -11,6 +11,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { QuestionManager } from './QuestionManager';
 
+// Interfaces
+interface QuestionOption {
+  id: string;
+  question_id: string;
+  option_text: string;
+  is_correct: boolean;
+  option_order: number;
+}
+
+interface Question {
+  id: string;
+  assessment_template_id: string;
+  question_text: string;
+  question_type: string;
+  points: number;
+  question_order: number;
+  explanation: string;
+  options?: QuestionOption[];
+}
+
 interface AssessmentTemplate {
   id: string;
   course_id: string;
@@ -35,7 +55,9 @@ export function AssessmentDialog({ courseId, assessment, onClose }: AssessmentDi
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [currentAssessmentId, setCurrentAssessmentId] = useState<string | null>(assessment?.id || null);
-  
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -61,87 +83,83 @@ export function AssessmentDialog({ courseId, assessment, onClose }: AssessmentDi
     }
   }, [assessment]);
 
+  const fetchQuestions = async () => {
+    if (!currentAssessmentId) return;
+    try {
+      setLoadingQuestions(true);
+      const { data, error } = await supabase
+        .from('assessment_questions')
+        .select(`*, question_options (*)`)
+        .eq('assessment_template_id', currentAssessmentId)
+        .order('question_order');
+
+      if (error) throw error;
+
+      const questionsWithSortedOptions = data?.map(q => ({
+        ...q,
+        options: q.question_options?.sort((a, b) => a.option_order - b.option_order) || []
+      })) || [];
+      setQuestions(questionsWithSortedOptions);
+    } catch (error) {
+      console.error('Error fetching questions:', error);
+      toast({ title: "Error", description: "Failed to load questions.", variant: "destructive" });
+    } finally {
+      setLoadingQuestions(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentAssessmentId) {
+      fetchQuestions();
+    }
+  }, [currentAssessmentId]);
+
   const handleSave = async () => {
     if (!user || !form.title.trim()) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Please fill in all required fields.", variant: "destructive" });
       return;
-    }
-
-    // For Quiz type, enforce that questions must exist after saving
-    if (form.assessment_type === 'quiz' && assessment && assessment.id) {
-      const { count } = await supabase
-        .from('assessment_questions')
-        .select('*', { count: 'exact', head: true })
-        .eq('assessment_template_id', assessment.id);
-        
-      if (!count || count === 0) {
-        toast({
-          title: "Warning",
-          description: "Quiz assessments should have at least one question. Please add questions in the Questions tab.",
-          variant: "default",
-        });
-      }
     }
 
     try {
       setSaving(true);
-      
-      const assessmentData = {
-        ...form,
-        course_id: courseId,
-        created_by: user.id
-      };
+      const assessmentData = { ...form, course_id: courseId, created_by: user.id };
 
       let result;
       if (assessment) {
-        // Update existing assessment
-        const { data, error } = await supabase
-          .from('assessment_templates')
-          .update(assessmentData)
-          .eq('id', assessment.id)
-          .select()
-          .single();
-        
+        const { data, error } = await supabase.from('assessment_templates').update(assessmentData).eq('id', assessment.id).select().single();
         if (error) throw error;
         result = data;
       } else {
-        // Create new assessment
-        const { data, error } = await supabase
-          .from('assessment_templates')
-          .insert(assessmentData)
-          .select()
-          .single();
-        
+        const { data, error } = await supabase.from('assessment_templates').insert(assessmentData).select().single();
         if (error) throw error;
         result = data;
         setCurrentAssessmentId(result.id);
       }
 
-      toast({
-        title: "Success",
-        description: `Assessment ${assessment ? 'updated' : 'created'} successfully.`,
-      });
-
-      // If it's a new assessment, keep the dialog open so they can add questions
-      if (!assessment) {
-        // Reset form for new assessment, but keep current assessment ID for questions
-        // Don't close the dialog yet
-      }
+      toast({ title: "Success", description: `Assessment ${assessment ? 'updated' : 'created'} successfully.` });
 
     } catch (error: any) {
       console.error('Error saving assessment:', error);
-      toast({
-        title: "Error",
-        description: `Failed to ${assessment ? 'update' : 'create'} assessment. Please try again.`,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: `Failed to ${assessment ? 'update' : 'create'} assessment.`, variant: "destructive" });
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleClose = () => {
+    if (form.assessment_type === 'quiz') {
+      if (questions.length === 0) {
+        toast({ title: "Validation Error", description: "A quiz must have at least one question.", variant: "destructive" });
+        return;
+      }
+      for (const q of questions) {
+        if (!q.options || q.options.length < 2) {
+          toast({ title: "Validation Error", description: `Question "${q.question_text}" must have at least two options.`, variant: "destructive" });
+          return;
+        }
+      }
+    }
+    onClose();
   };
 
   return (
@@ -155,25 +173,16 @@ export function AssessmentDialog({ courseId, assessment, onClose }: AssessmentDi
         </TabsList>
 
         <TabsContent value="details" className="space-y-4">
+          {/* Form fields... */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="title">Assessment Title *</Label>
-              <Input
-                id="title"
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="e.g., Module 1 Quiz"
-              />
+              <Input id="title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g., Module 1 Quiz" />
             </div>
             <div>
               <Label htmlFor="assessment_type">Assessment Type</Label>
-              <Select
-                value={form.assessment_type}
-                onValueChange={(value) => setForm({ ...form, assessment_type: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={form.assessment_type} onValueChange={(value) => setForm({ ...form, assessment_type: value })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="quiz">Quiz</SelectItem>
                   <SelectItem value="project">Project</SelectItem>
@@ -182,81 +191,45 @@ export function AssessmentDialog({ courseId, assessment, onClose }: AssessmentDi
               </Select>
             </div>
           </div>
-
           <div>
             <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Brief description of the assessment"
-              rows={2}
-            />
+            <Textarea id="description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Brief description of the assessment" rows={2} />
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="passing_score">Passing Score (%)</Label>
-              <Input
-                id="passing_score"
-                type="number"
-                min="0"
-                max="100"
-                value={form.passing_score}
-                onChange={(e) => setForm({ ...form, passing_score: parseInt(e.target.value) || 70 })}
-              />
+              <Input id="passing_score" type="number" min="0" max="100" value={form.passing_score} onChange={(e) => setForm({ ...form, passing_score: parseInt(e.target.value) || 70 })} />
             </div>
             <div>
               <Label htmlFor="time_limit">Time Limit (minutes)</Label>
-              <Input
-                id="time_limit"
-                type="number"
-                min="1"
-                value={form.time_limit_minutes}
-                onChange={(e) => setForm({ ...form, time_limit_minutes: parseInt(e.target.value) || 60 })}
-              />
+              <Input id="time_limit" type="number" min="1" value={form.time_limit_minutes} onChange={(e) => setForm({ ...form, time_limit_minutes: parseInt(e.target.value) || 60 })} />
             </div>
           </div>
-
           <div>
             <Label htmlFor="instructions">Instructions</Label>
-            <Textarea
-              id="instructions"
-              value={form.instructions}
-              onChange={(e) => setForm({ ...form, instructions: e.target.value })}
-              placeholder="Instructions for students taking this assessment"
-              rows={3}
-            />
+            <Textarea id="instructions" value={form.instructions} onChange={(e) => setForm({ ...form, instructions: e.target.value })} placeholder="Instructions for students..." rows={3} />
           </div>
-
           <div className="flex items-center space-x-2">
-            <Switch
-              id="is_mandatory"
-              checked={form.is_mandatory}
-              onCheckedChange={(checked) => setForm({ ...form, is_mandatory: checked })}
-            />
+            <Switch id="is_mandatory" checked={form.is_mandatory} onCheckedChange={(checked) => setForm({ ...form, is_mandatory: checked })} />
             <Label htmlFor="is_mandatory">Mandatory Assessment</Label>
           </div>
-
           <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving...' : assessment ? 'Update Assessment' : 'Create Assessment'}
-            </Button>
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : assessment ? 'Update Assessment' : 'Create Assessment'}</Button>
           </div>
         </TabsContent>
 
         <TabsContent value="questions" className="space-y-4">
           {currentAssessmentId && (
-            <QuestionManager assessmentId={currentAssessmentId} />
+            <QuestionManager 
+              assessmentId={currentAssessmentId} 
+              questions={questions}
+              onQuestionsChange={fetchQuestions}
+              loading={loadingQuestions}
+            />
           )}
-          
           <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button variant="outline" onClick={onClose}>
-              Done
-            </Button>
+            <Button variant="outline" onClick={handleClose}>Done</Button>
           </div>
         </TabsContent>
       </Tabs>

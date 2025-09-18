@@ -30,38 +30,31 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(() => {
+    try {
+      const storedProfile = sessionStorage.getItem('userProfile');
+      return storedProfile ? JSON.parse(storedProfile) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
     try {
       const attempt = async () => {
-        // First attempt: join with roles
         const { data, error } = await supabase
           .from('profiles')
           .select(`
-            id,
-            employee_code,
-            first_name,
-            last_name,
-            phone,
-            department,
-            designation,
-            current_status,
+            id, employee_code, first_name, last_name, phone, department, designation, current_status,
             role:roles(role_name, role_description)
           `)
           .eq('id', userId)
           .maybeSingle();
 
-        if (error) {
-          console.warn('Profile join fetch failed, will try fallback:', error);
-        }
+        if (error) console.warn('Profile join fetch failed, will try fallback:', error);
+        if (data) return data as Profile;
 
-        if (data) {
-          return data as Profile;
-        }
-
-        // Fallback: fetch base profile + role via role_id
         const { data: base, error: baseErr } = await supabase
           .from('profiles')
           .select('id, employee_code, first_name, last_name, phone, department, designation, current_status, role_id')
@@ -72,7 +65,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.error('Base profile fetch failed:', baseErr);
           return null;
         }
-
         if (!base) {
           console.warn('No profile row found for user:', userId);
           return null;
@@ -85,32 +77,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             .select('role_name, role_description')
             .eq('id', (base as any).role_id)
             .maybeSingle();
-          if (roleErr) {
-            console.warn('Role fetch failed:', roleErr);
-          } else if (roleRow) {
-            role = { role_name: roleRow.role_name as any, role_description: roleRow.role_description ?? null };
-          }
+          if (roleErr) console.warn('Role fetch failed:', roleErr);
+          else if (roleRow) role = { role_name: roleRow.role_name as any, role_description: roleRow.role_description ?? null };
         }
 
-        const assembled: Profile = {
-          id: base.id,
-          employee_code: base.employee_code,
-          first_name: base.first_name,
-          last_name: base.last_name,
-          phone: base.phone,
-          department: base.department,
-          designation: base.designation,
-          current_status: base.current_status,
-          role,
-        };
-        return assembled;
+        return { ...base, role } as Profile;
       };
 
       const delays = [0, 200, 1000];
       for (let i = 0; i < delays.length; i++) {
         if (delays[i]) await new Promise(res => setTimeout(res, delays[i]));
         const result = await attempt();
-        if (result) return result;
+        if (result) {
+          sessionStorage.setItem('userProfile', JSON.stringify(result));
+          return result;
+        }
       }
       return null;
     } catch (error) {
@@ -126,26 +107,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setProfile(profileData);
     } else {
       setProfile(null);
+      sessionStorage.removeItem('userProfile');
     }
   };
 
   useEffect(() => {
-    // Listen for auth changes FIRST (synchronous callback)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state changed:', event, session?.user?.id);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        // Defer any Supabase calls to avoid deadlocks and clear stale profile immediately
+      const newUserId = session?.user?.id;
+
+      if (newUserId !== user?.id) {
         setProfile(null);
-        setTimeout(() => {
-          refreshProfile(session.user!.id);
-        }, 0);
+        sessionStorage.removeItem('userProfile');
+      }
+
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        refreshProfile(session.user.id);
       } else {
         setProfile(null);
+        sessionStorage.removeItem('userProfile');
       }
     });
 
-    // Get initial session and await profile fetch
     const initializeAuth = async () => {
       setLoading(true);
       try {
@@ -159,14 +144,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          console.log('Fetching profile for user:', session.user.id);
-          const profileData = await fetchProfile(session.user.id);
-          setProfile(profileData);
-          if (!profileData) {
-            console.warn('No profile found for user:', session.user.id);
+          if (!profile || profile.id !== session.user.id) {
+            console.log('Fetching profile for user:', session.user.id);
+            const profileData = await fetchProfile(session.user.id);
+            setProfile(profileData);
+            if (!profileData) console.warn('No profile found for user:', session.user.id);
           }
         } else {
           setProfile(null);
+          sessionStorage.removeItem('userProfile');
         }
       } catch (error) {
         console.error('Error in auth initialization:', error);
@@ -183,20 +169,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     try {
       console.log('Signing out...');
-      // Always clear local state first
       setUser(null);
       setProfile(null);
+      sessionStorage.removeItem('userProfile');
       setLoading(false);
       
-      // Attempt server-side logout, but don't throw if it fails
       const { error } = await supabase.auth.signOut({ scope: 'global' });
       if (error && error.message !== 'Session from session_id claim in JWT does not exist') {
         console.warn('Sign out error (non-critical):', error);
       }
-      
       console.log('Sign out completed');
     } catch (error) {
-      // Even if server-side logout fails, we've cleared local state
       console.warn('Sign out error (handled):', error);
     }
   };
