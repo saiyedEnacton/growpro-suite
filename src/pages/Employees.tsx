@@ -1,3 +1,4 @@
+import { MainNav } from '@/components/navigation/MainNav';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -180,6 +181,7 @@ export default function Employees() {
 
   return (
     <div className="min-h-screen bg-background">
+      <MainNav />
       <div className="container mx-auto py-6 px-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

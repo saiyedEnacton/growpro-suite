@@ -82,22 +82,24 @@ export const CourseAssessment = ({
     return (
       <Card className="hover:shadow-md transition-all duration-200">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">{title || assessmentType}</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold">{title || assessmentType}</CardTitle>
+            {status !== 'Completed' && (
+              <Button
+                size="sm"
+                onClick={() => onMarkAsComplete?.(id)}
+              >
+                Mark as Complete
+              </Button>
+            )}
+          </div>
           {description && (
             <p className="text-sm text-muted-foreground mt-1">{description}</p>
           )}
         </CardHeader>
         <CardContent>
-          {status !== 'Completed' ? (
-            <Button
-              size="sm"
-              className="flex-1"
-              onClick={() => onMarkAsComplete?.(id)}
-            >
-              Mark as Complete
-            </Button>
-          ) : (
-            <div className="flex items-center text-sm text-success">
+          {status === 'Completed' && (
+            <div className="flex items-center text-sm text-success mt-4">
               <CheckCircle className="w-4 h-4 mr-2" />
               <span>Completed</span>
             </div>

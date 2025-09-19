@@ -22,44 +22,18 @@ interface SubmitWorkDialogProps {
 
 export function SubmitWorkDialog({ assignmentId, onSubmited }: SubmitWorkDialogProps) {
   const { user } = useAuth();
-  const [file, setFile] = useState<File | null>(null);
   const [submissionLink, setSubmissionLink] = useState("");
   const [comments, setComments] = useState("");
-  const [uploading, setUploading] = useState(false);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFile(e.target.files[0]);
-    }
-  };
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     if (!user) return;
-    if (!submissionLink && !file) {
-        toast.warning("Please provide a submission link or upload a file.");
+    if (!submissionLink) {
+        toast.warning("Please provide a submission link.");
         return;
     }
 
-    setUploading(true);
-    let file_url = null;
-
-    if (file) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${user.id}-${assignmentId}-${Date.now()}.${fileExt}`;
-        const filePath = `project-submissions/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-        .from('project-submissions')
-        .upload(filePath, file);
-
-        if (uploadError) {
-            console.error("Error uploading file:", uploadError);
-            toast.error(`File upload failed: ${uploadError.message}`);
-            setUploading(false);
-            return;
-        }
-        file_url = filePath;
-    }
+    setSubmitting(true);
 
     const { error: dbError } = await supabase
       .from('project_milestone_submissions')
@@ -68,7 +42,7 @@ export function SubmitWorkDialog({ assignmentId, onSubmited }: SubmitWorkDialogP
           assignment_id: assignmentId,
           submitted_by: user.id,
           submission_content: comments,
-          file_url: submissionLink || file_url, // Use link if provided, otherwise the uploaded file path
+          file_url: submissionLink,
         },
       ]);
 
@@ -82,7 +56,7 @@ export function SubmitWorkDialog({ assignmentId, onSubmited }: SubmitWorkDialogP
       onSubmited();
     }
 
-    setUploading(false);
+    setSubmitting(false);
   };
 
   return (
@@ -94,7 +68,7 @@ export function SubmitWorkDialog({ assignmentId, onSubmited }: SubmitWorkDialogP
         <DialogHeader>
           <DialogTitle>Submit Your Work</DialogTitle>
           <DialogDescription>
-            Provide a link to your work (e.g., GitHub, live demo) or upload a file.
+            Provide a link to your work (e.g., GitHub, live demo).
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -103,8 +77,6 @@ export function SubmitWorkDialog({ assignmentId, onSubmited }: SubmitWorkDialogP
                 value={submissionLink}
                 onChange={(e) => setSubmissionLink(e.target.value)}
             />
-            <div className="text-center text-xs text-muted-foreground">OR</div>
-          <Input type="file" onChange={handleFileChange} />
           <Textarea
             placeholder="Add any comments about your submission..."
             value={comments}
@@ -112,8 +84,8 @@ export function SubmitWorkDialog({ assignmentId, onSubmited }: SubmitWorkDialogP
           />
         </div>
         <DialogFooter>
-          <Button onClick={handleSubmit} disabled={uploading}>
-            {uploading ? "Submitting..." : "Submit"}
+          <Button onClick={handleSubmit} disabled={submitting}>
+            {submitting ? "Submitting..." : "Submit"}
           </Button>
         </DialogFooter>
       </DialogContent>

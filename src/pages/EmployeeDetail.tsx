@@ -1,3 +1,4 @@
+import { MainNav } from '@/components/navigation/MainNav';
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { ArrowLeft, Edit, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserRoleType, EmployeeStatusOptions } from '@/lib/enums';
+import { EmployeeDocuments } from '@/components/employees/EmployeeDocuments';
 
 // --- TYPE DEFINITIONS ---
 
@@ -177,6 +179,8 @@ export default function EmployeeDetail() {
   }
 
   return (
+    <>
+    <MainNav />
     <div className="container mx-auto py-6 px-4">
       <div className="flex justify-between items-center">
         <Link to="/employees">
@@ -269,6 +273,9 @@ export default function EmployeeDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {employeeId && <EmployeeDocuments employeeId={employeeId} />}
     </div>
+    </>
   );
 }

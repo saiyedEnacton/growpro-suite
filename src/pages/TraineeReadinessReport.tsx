@@ -1,3 +1,4 @@
+import { MainNav } from '@/components/navigation/MainNav';
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -103,6 +104,8 @@ const TraineeReadinessReport: React.FC = () => {
   });
 
   return (
+    <>
+    <MainNav />
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 bg-gray-50/50 min-h-screen">
       <HeaderSection 
         trainees={trainees || []}
@@ -133,6 +136,7 @@ const TraineeReadinessReport: React.FC = () => {
         <div className="text-center py-20 text-gray-500"><p>Please select a trainee to view their readiness report.</p></div>
       )}
     </div>
+    </>
   );
 };
 
