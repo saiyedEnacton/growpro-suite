@@ -33,8 +33,9 @@ export const SignupForm = () => {
       toast.success(
         "Account created. If email confirmation is enabled, check your inbox to verify your email."
       );
-    } catch (err: any) {
-      toast.error(err.message || "Unexpected error during sign up");
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unexpected error during sign up";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

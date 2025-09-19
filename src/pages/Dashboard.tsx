@@ -1,4 +1,4 @@
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { UserRoles } from '@/lib/enums';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';

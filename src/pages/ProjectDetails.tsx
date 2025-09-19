@@ -72,7 +72,7 @@ export default function ProjectDetails() {
 
   useEffect(() => {
     fetchDetails();
-  }, [projectId]);
+  }, [projectId, fetchDetails]);
 
   if (loading) {
     return <div className="p-8">Loading project details...</div>;

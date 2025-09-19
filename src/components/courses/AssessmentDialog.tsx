@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -112,7 +112,7 @@ export function AssessmentDialog({ courseId, assessment, onClose }: AssessmentDi
     if (currentAssessmentId) {
       fetchQuestions();
     }
-  }, [currentAssessmentId]);
+  }, [currentAssessmentId, fetchQuestions]);
 
   const handleSave = async () => {
     if (!user || !form.title.trim()) {
@@ -138,7 +138,7 @@ export function AssessmentDialog({ courseId, assessment, onClose }: AssessmentDi
 
       toast({ title: "Success", description: `Assessment ${assessment ? 'updated' : 'created'} successfully.` });
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving assessment:', error);
       toast({ title: "Error", description: `Failed to ${assessment ? 'update' : 'create'} assessment.`, variant: "destructive" });
     } finally {

@@ -36,7 +36,7 @@ export function AssessmentTemplateManager({ courseId }: AssessmentTemplateManage
 
   useEffect(() => {
     fetchAssessments();
-  }, [courseId]);
+  }, [courseId, fetchAssessments]);
 
   const fetchAssessments = async () => {
     try {
@@ -66,7 +66,7 @@ export function AssessmentTemplateManager({ courseId }: AssessmentTemplateManage
       );
 
       setAssessments(assessmentsWithCount);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching assessments:', error);
       toast({
         title: "Error",
@@ -92,7 +92,7 @@ export function AssessmentTemplateManager({ courseId }: AssessmentTemplateManage
         title: "Success",
         description: "Assessment deleted successfully.",
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting assessment:', error);
       toast({
         title: "Error",

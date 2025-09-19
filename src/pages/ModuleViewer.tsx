@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Clock, FileText, Video, Link as LinkIcon, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ModuleViewer() {
@@ -19,46 +19,46 @@ export default function ModuleViewer() {
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchModuleData = useCallback(async () => {
     if (courseId && moduleId && profile?.id) {
-      fetchModuleData();
+      try {
+        // Fetch module details
+        const { data: moduleData, error: moduleError } = await supabase
+          .from('course_modules')
+          .select('*')
+          .eq('id', moduleId)
+          .eq('course_id', courseId)
+          .single();
+
+        if (moduleError) throw moduleError;
+
+        // Fetch course details
+        const { data: courseData, error: courseError } = await supabase
+          .from('courses')
+          .select('course_name')
+          .eq('id', courseId)
+          .single();
+
+        if (courseError) throw courseError;
+
+        setModule(moduleData);
+        setCourse(courseData);
+      } catch (error: Error) {
+        console.error('Error fetching module data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load module content",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
     }
-  }, [courseId, moduleId, profile?.id]);
+  }, [courseId, moduleId, profile?.id, toast]);
 
-  const fetchModuleData = async () => {
-    try {
-      // Fetch module details
-      const { data: moduleData, error: moduleError } = await supabase
-        .from('course_modules')
-        .select('*')
-        .eq('id', moduleId)
-        .eq('course_id', courseId)
-        .single();
-
-      if (moduleError) throw moduleError;
-
-      // Fetch course details
-      const { data: courseData, error: courseError } = await supabase
-        .from('courses')
-        .select('course_name')
-        .eq('id', courseId)
-        .single();
-
-      if (courseError) throw courseError;
-
-      setModule(moduleData);
-      setCourse(courseData);
-    } catch (error) {
-      console.error('Error fetching module data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load module content",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    fetchModuleData();
+  }, [fetchModuleData]);
 
   const getContentIcon = (contentType: string) => {
     switch (contentType?.toLowerCase()) {

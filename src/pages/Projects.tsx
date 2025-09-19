@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { FolderOpen, Calendar, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { Link } from 'react-router-dom';
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog';
 import { AssignProjectDialog } from '@/components/projects/AssignProjectDialog';
@@ -46,7 +46,7 @@ export default function Projects() {
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     if (!user || !profile) return;
     setLoading(true);
     let response;
@@ -69,11 +69,11 @@ export default function Projects() {
       setProjects(data || []);
     }
     setLoading(false);
-  };
+  }, [user, profile]);
 
   useEffect(() => {
     fetchProjects();
-  }, [user, profile]);
+  }, [user, profile, fetchProjects]);
 
   const handleProjectCreated = (projectId: string) => {
     setSelectedProjectId(projectId);

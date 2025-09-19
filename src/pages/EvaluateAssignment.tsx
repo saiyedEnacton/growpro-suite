@@ -76,7 +76,7 @@ export default function EvaluateAssignment() {
 
   useEffect(() => {
     fetchDetails();
-  }, [assignmentId]);
+  }, [assignmentId, fetchDetails]);
 
   if (loading) {
     return <div className="p-8">Loading assignment details...</div>;

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,7 +41,7 @@ export function CourseAssignmentDialog({ courseId, courseName, onClose }: Course
   useEffect(() => {
     fetchEmployees();
     fetchExistingEnrollments();
-  }, []);
+  }, [fetchEmployees, fetchExistingEnrollments]);
 
   const fetchEmployees = async () => {
     try {
@@ -149,7 +149,7 @@ export function CourseAssignmentDialog({ courseId, courseName, onClose }: Course
 
       onClose();
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error assigning course:', error);
       toast({
         title: "Error",

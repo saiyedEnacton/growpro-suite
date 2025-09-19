@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -72,7 +72,7 @@ export default function Courses() {
 
   useEffect(() => {
     fetchCourses();
-  }, [profile?.id]);
+  }, [profile?.id, fetchCourses]);
 
   const handleEnroll = async (courseId: string) => {
     try {

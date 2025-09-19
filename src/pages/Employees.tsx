@@ -1,6 +1,6 @@
 import { MainNav } from '@/components/navigation/MainNav';
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/hooks/auth-utils';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -46,31 +46,7 @@ export default function Employees() {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [addEmployeeDialogOpen, setAddEmployeeDialogOpen] = useState(false);
 
-  // Check if user has permission to access this page
-  if (!profile || !['HR', 'Management'].includes(profile.role?.role_name || '')) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="w-96">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <UserX className="h-12 w-12 mx-auto text-muted-foreground" />
-              <h2 className="text-xl font-semibold">Access Denied</h2>
-              <p className="text-muted-foreground">
-                You don't have permission to access the employee management page.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  useEffect(() => {
-    fetchEmployees();
-    fetchRoles();
-  }, []);
-
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -100,9 +76,9 @@ export default function Employees() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const fetchRoles = async () => {
+  const fetchRoles = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('roles')
@@ -118,7 +94,31 @@ export default function Employees() {
     } catch (error) {
       console.error('Error:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchEmployees();
+    fetchRoles();
+  }, [fetchEmployees, fetchRoles]);
+
+  // Check if user has permission to access this page
+  if (!profile || !['HR', 'Management'].includes(profile.role?.role_name || '')) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-96">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <UserX className="h-12 w-12 mx-auto text-muted-foreground" />
+              <h2 className="text-xl font-semibold">Access Denied</h2>
+              <p className="text-muted-foreground">
+                You don't have permission to access the employee management page.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const updateEmployeeRole = async (employeeId: string, roleId: string) => {
     try {

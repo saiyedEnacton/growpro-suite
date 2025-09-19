@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MainNav } from '@/components/navigation/MainNav';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { CourseAssessment } from '@/components/courses/CourseAssessment';
 import { ArrowLeft, Clock, Users, BookOpen, Award, Edit, UserPlus, Settings } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { useToast } from '@/hooks/use-toast';
 import { CourseAssignmentDialog } from '@/components/courses/CourseAssignmentDialog';
 
@@ -29,13 +29,7 @@ export default function CourseDetails() {
   const [loading, setLoading] = useState(true);
   const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
 
-  useEffect(() => {
-    if (courseId && profile?.id) {
-      fetchCourseData();
-    }
-  }, [courseId, profile?.id]);
-
-  const fetchCourseData = async () => {
+  const fetchCourseData = useCallback(async () => {
     try {
       // Fetch course details
       const { data: courseData, error: courseError } = await supabase
@@ -89,7 +83,13 @@ export default function CourseDetails() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [courseId, profile?.id, toast]);
+
+  useEffect(() => {
+    if (courseId && profile?.id) {
+      fetchCourseData();
+    }
+  }, [courseId, profile?.id, fetchCourseData]);
 
   const handleEnroll = async () => {
     try {
@@ -147,7 +147,7 @@ export default function CourseDetails() {
         .from('course_assessments')
         .update({ status: 'Completed', completion_date: new Date().toISOString() })
         .eq('assessment_template_id', assessmentId)
-        .eq('employee_id', profile.id);
+        .eq('employee_id', profile?.id);
 
       if (error) throw error;
 
@@ -350,7 +350,7 @@ export default function CourseDetails() {
                           key={template.id}
                           id={template.id}
                           courseId={courseId!}
-                          employeeId={profile?.id!}
+                          employeeId={profile?.id}
                           assessmentType={template.assessment_type}
                           status={userAssessment?.status}
                           totalScore={userAssessment?.total_score}

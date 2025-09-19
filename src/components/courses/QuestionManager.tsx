@@ -137,7 +137,7 @@ export function QuestionManager({ assessmentId, questions, onQuestionsChange, lo
       resetForm();
       toast({ title: "Success", description: `Question ${editingQuestion ? 'updated' : 'saved'} successfully.` });
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving question:', error);
       toast({ title: "Error", description: `Failed to save question.`, variant: "destructive" });
     }
@@ -149,7 +149,7 @@ export function QuestionManager({ assessmentId, questions, onQuestionsChange, lo
       if (error) throw error;
       await onQuestionsChange();
       toast({ title: "Success", description: "Question deleted successfully." });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting question:', error);
       toast({ title: "Error", description: "Failed to delete question.", variant: "destructive" });
     }
@@ -162,7 +162,7 @@ export function QuestionManager({ assessmentId, questions, onQuestionsChange, lo
       setQuestionForm(prev => ({ ...prev, options: prev.options.filter((_, i) => i !== index) }));
     }
   };
-  const updateOption = (index: number, field: string, value: any) => {
+  const updateOption = (index: number, field: string, value: unknown) => {
     const newOptions = [...questionForm.options];
     newOptions[index] = { ...newOptions[index], [field]: value };
     setQuestionForm({ ...questionForm, options: newOptions });

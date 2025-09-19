@@ -11,7 +11,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/auth-utils";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 

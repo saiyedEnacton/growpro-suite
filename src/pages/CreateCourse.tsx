@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, Save, Plus, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { useToast } from '@/hooks/use-toast';
 import { ModuleDialog } from '@/components/courses/ModuleDialog';
 import { EnhancedModuleDialog } from '@/components/courses/EnhancedModuleDialog';
@@ -51,54 +51,43 @@ export default function CreateCourse() {
                          profile?.role?.role_name === 'HR' ||
                          profile?.role?.role_name === 'Management';
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: keyof typeof formData, value: string | boolean | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!canCreateCourse) {
-      toast({
-        title: "Access Denied",
-        description: "You don't have permission to create courses",
-        variant: "destructive"
-      });
+  const handleSaveCourse = async () => {
+    if (!formData.course_name.trim()) {
+      toast.error("Course name is required.");
       return;
     }
 
-    setLoading(true);
-    
     try {
+      setSaving(true);
       const { data, error } = await supabase
         .from('courses')
         .insert({
-          ...formData,
-          created_by: profile?.id
+          course_name: formData.course_name,
+          course_description: formData.course_description,
+          difficulty_level: formData.difficulty_level,
+          course_type: formData.course_type,
+          is_mandatory: formData.is_mandatory,
+          completion_rule: formData.completion_rule,
+          minimum_passing_percentage: formData.minimum_passing_percentage,
+          learning_objectives: formData.learning_objectives,
+          created_by: user?.id,
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      setCurrentCourseId(data.id);
-      
-      toast({
-        title: "Success",
-        description: "Course created successfully. Now you can add modules and assessments."
-      });
-      
-      // Switch to modules tab after course creation
-      setActiveTab('modules');
+      toast.success("Course created successfully!");
+      navigate(`/courses/${data.id}/edit`);
     } catch (error) {
       console.error('Error creating course:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create course",
-        variant: "destructive"
-      });
+      toast.error(error.message || "Failed to create course.");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -232,7 +221,7 @@ export default function CreateCourse() {
               </TabsList>
 
               <TabsContent value="details" className="space-y-6">
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSaveCourse} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="course_name">Course Name</Label>
                 <Input
