@@ -1,8 +1,13 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate, useLocation } from 'react-router-dom';
 
-const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-  const { user, loading } = useAuth();
+interface ProtectedRouteProps {
+  children: JSX.Element;
+  roles?: string[]; // Optional array of roles that can access the route
+}
+
+const ProtectedRoute = ({ children, roles }: ProtectedRouteProps) => {
+  const { user, profile, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -14,9 +19,13 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   }
 
   if (!user) {
-    // Redirect them to the /auth page, but save the current location they were
-    // trying to go to. This allows us to send them along to that page after login.
     return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  // If roles are specified, check if the user's role is one of them
+  if (roles && roles.length > 0 && (!profile || !roles.includes(profile.role))) {
+    // User does not have the required role, redirect them
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;

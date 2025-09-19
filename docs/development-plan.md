@@ -180,7 +180,7 @@ This work is broken down into the following epics and user stories.
     - The page allows selecting a trainee to view their report.
     - The report aggregates and displays all of the trainee's scores from `course_assessments` and `project_evaluations`.
     - It shows average scores, trends over time, and a summary of strengths and weaknesses identified in feedback.
-    - An overall "Readiness Score" is calculated based on a weighted average of their performance, indicating their suitability for deployment on client projects.
+- An overall "Readiness Score" is calculated based on a weighted average of their performance, indicating their suitability for deployment on client projects.
 
 ---
 

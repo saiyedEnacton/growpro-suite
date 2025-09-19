@@ -63,6 +63,12 @@ const navigationItems: NavItem[] = [
     href: '/training-sessions',
     roles: [UserRoles.MANAGEMENT, UserRoles.HR, UserRoles.TEAM_LEAD, UserRoles.TRAINEE],
   },
+  {
+    label: 'Readiness Report',
+    icon: BarChart3, // Using an existing icon
+    href: '/reports/readiness',
+    roles: [UserRoles.MANAGEMENT],
+  },
 ];
 
 export const MainNav = () => {

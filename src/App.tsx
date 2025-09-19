@@ -21,6 +21,7 @@ import ProjectDetails from "./pages/ProjectDetails";
 import AssignmentDetails from "./pages/AssignmentDetails";
 import EvaluateAssignment from "./pages/EvaluateAssignment";
 import TrainingSessions from "./pages/TrainingSessions";
+import TraineeReadinessReport from "./pages/TraineeReadinessReport";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -71,12 +72,12 @@ const AuthenticatedApp = () => {
       <Route path="/assignments/:assignmentId" element={<AssignmentDetails />} />
       <Route path="/assignments/:assignmentId/evaluate" element={<EvaluateAssignment />} />
       <Route path="/training-sessions" element={<TrainingSessions />} />
+      <Route path="/reports/readiness" element={<TraineeReadinessReport />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
