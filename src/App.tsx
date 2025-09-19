@@ -17,6 +17,9 @@ import CreateCourse from "./pages/CreateCourse";
 import CourseBuilder from "./pages/CourseBuilder";
 import AssessmentTaker from "./pages/AssessmentTaker";
 import Projects from "./pages/Projects";
+import ProjectDetails from "./pages/ProjectDetails";
+import AssignmentDetails from "./pages/AssignmentDetails";
+import EvaluateAssignment from "./pages/EvaluateAssignment";
 import TrainingSessions from "./pages/TrainingSessions";
 import NotFound from "./pages/NotFound";
 
@@ -64,6 +67,9 @@ const AuthenticatedApp = () => {
       <Route path="/courses/:courseId/modules/:moduleId" element={<ModuleViewer />} />
       <Route path="/courses/:courseId/assessments/:assessmentId" element={<AssessmentTaker />} />
       <Route path="/projects" element={<Projects />} />
+      <Route path="/projects/:projectId" element={<ProjectDetails />} />
+      <Route path="/assignments/:assignmentId" element={<AssignmentDetails />} />
+      <Route path="/assignments/:assignmentId/evaluate" element={<EvaluateAssignment />} />
       <Route path="/training-sessions" element={<TrainingSessions />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />

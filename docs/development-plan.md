@@ -216,4 +216,5 @@ This work is broken down into the following epics and user stories.
     - When an HR user selects an employee from the dropdown:
       - If the selected employee is not already HR or Management, their role is automatically promoted to "Team Lead". A notification confirms the promotion.
       - The selected employee's ID is then saved as the `manager_id` for the employee being viewed.
-    - This combines the act of promotion and assignment into a single, efficient user action.
+  - This combines the act of promotion and assignment into a single, efficient user action.
+  - 

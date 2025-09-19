@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Clock, Users, BookOpen, Star } from 'lucide-react';
+import { Clock, Users, BookOpen, Star, Trash2 } from 'lucide-react';
 
 interface CourseCardProps {
   id: string;
@@ -16,8 +16,10 @@ interface CourseCardProps {
   progress?: number;
   isEnrolled?: boolean;
   isMandatory?: boolean;
+  isAdmin?: boolean;
   onEnroll?: (courseId: string) => void;
   onViewDetails?: (courseId: string) => void;
+  onDelete?: (courseId: string) => void;
 }
 
 export const CourseCard = ({
@@ -32,8 +34,10 @@ export const CourseCard = ({
   progress,
   isEnrolled = false,
   isMandatory = false,
+  isAdmin = false,
   onEnroll,
   onViewDetails,
+  onDelete,
 }: CourseCardProps) => {
   const getDifficultyColor = (level: string) => {
     switch (level.toLowerCase()) {
@@ -158,6 +162,11 @@ export const CourseCard = ({
               onClick={() => onViewDetails?.(id)}
             >
               Continue
+            </Button>
+          )}
+          {isAdmin && (
+            <Button variant="destructive" size="icon" onClick={() => onDelete?.(id)}>
+                <Trash2 className="h-4 w-4" />
             </Button>
           )}
         </div>

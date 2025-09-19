@@ -7,16 +7,37 @@ import { Plus, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+interface Course {
+    id: string;
+    course_name: string;
+    course_description: string;
+    course_type: string;
+    difficulty_level: string;
+    is_mandatory: boolean;
+}
 
 export default function Courses() {
-  const [courses, setCourses] = useState([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [enrollments, setEnrollments] = useState(new Map());
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+
+  const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
 
   const fetchCourses = async () => {
     try {
@@ -27,7 +48,6 @@ export default function Courses() {
 
       if (error) throw error;
 
-      // Fetch user enrollments if logged in
       if (profile?.id) {
         const { data: enrollmentsData } = await supabase
           .from('course_enrollments')
@@ -44,11 +64,7 @@ export default function Courses() {
       setCourses(coursesData || []);
     } catch (error) {
       console.error('Error fetching courses:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load courses",
-        variant: "destructive"
-      });
+      toast.error("Failed to load courses");
     } finally {
       setLoading(false);
     }
@@ -71,22 +87,37 @@ export default function Courses() {
       if (error) throw error;
 
       setEnrollments(prev => new Map(prev).set(courseId, 'enrolled'));
-      toast({
-        title: "Success",
-        description: "Successfully enrolled in course"
-      });
+      toast.success("Successfully enrolled in course");
     } catch (error) {
       console.error('Error enrolling in course:', error);
-      toast({
-        title: "Error", 
-        description: "Failed to enroll in course",
-        variant: "destructive"
-      });
+      toast.error("Failed to enroll in course");
     }
   };
 
   const handleViewDetails = (courseId: string) => {
     navigate(`/courses/${courseId}`);
+  };
+
+  const openDeleteDialog = (courseId: string) => {
+    const course = courses.find(c => c.id === courseId);
+    if (course) {
+        setCourseToDelete(course);
+        setDeleteDialogOpen(true);
+    }
+  };
+
+  const handleDeleteCourse = async () => {
+    if (!courseToDelete) return;
+    const { error } = await supabase.from('courses').delete().eq('id', courseToDelete.id);
+
+    if (error) {
+        toast.error(`Failed to delete course: ${error.message}`);
+    } else {
+        toast.success(`Course "${courseToDelete.course_name}" deleted.`);
+        fetchCourses();
+    }
+    setDeleteDialogOpen(false);
+    setCourseToDelete(null);
   };
 
   const filteredCourses = courses.filter(course =>
@@ -148,8 +179,10 @@ export default function Courses() {
                 difficulty={course.difficulty_level}
                 isMandatory={course.is_mandatory}
                 isEnrolled={enrollments.has(course.id)}
+                isAdmin={canManageCourses}
                 onEnroll={handleEnroll}
                 onViewDetails={handleViewDetails}
+                onDelete={openDeleteDialog}
               />
             ))}
           </div>
@@ -161,6 +194,22 @@ export default function Courses() {
           </div>
         )}
       </main>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the course
+              <strong> {courseToDelete?.course_name}</strong> and all of its associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteCourse}>Confirm Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
