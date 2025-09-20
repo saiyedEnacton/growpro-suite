@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,11 +34,7 @@ export function AssessmentTemplateManager({ courseId }: AssessmentTemplateManage
   const [editingAssessment, setEditingAssessment] = useState<AssessmentTemplate | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchAssessments();
-  }, [courseId]);
-
-  const fetchAssessments = async () => {
+  const fetchAssessments = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -66,7 +62,7 @@ export function AssessmentTemplateManager({ courseId }: AssessmentTemplateManage
       );
 
       setAssessments(assessmentsWithCount);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching assessments:', error);
       toast({
         title: "Error",
@@ -76,7 +72,11 @@ export function AssessmentTemplateManager({ courseId }: AssessmentTemplateManage
     } finally {
       setLoading(false);
     }
-  };
+  }, [courseId, toast]);
+
+  useEffect(() => {
+    fetchAssessments();
+  }, [fetchAssessments]);
 
   const handleDeleteAssessment = async (assessmentId: string) => {
     try {
@@ -92,7 +92,7 @@ export function AssessmentTemplateManager({ courseId }: AssessmentTemplateManage
         title: "Success",
         description: "Assessment deleted successfully.",
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting assessment:', error);
       toast({
         title: "Error",

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,12 +38,7 @@ export function CourseAssignmentDialog({ courseId, courseName, onClose }: Course
   const [assigning, setAssigning] = useState(false);
   const [enrolledEmployees, setEnrolledEmployees] = useState<string[]>([]);
 
-  useEffect(() => {
-    fetchEmployees();
-    fetchExistingEnrollments();
-  }, []);
-
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -70,9 +65,9 @@ export function CourseAssignmentDialog({ courseId, courseName, onClose }: Course
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id, toast]);
 
-  const fetchExistingEnrollments = async () => {
+  const fetchExistingEnrollments = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('course_enrollments')
@@ -84,7 +79,12 @@ export function CourseAssignmentDialog({ courseId, courseName, onClose }: Course
     } catch (error) {
       console.error('Error fetching enrollments:', error);
     }
-  };
+  }, [courseId]);
+
+  useEffect(() => {
+    fetchEmployees();
+    fetchExistingEnrollments();
+  }, [fetchEmployees, fetchExistingEnrollments]);
 
   const filteredEmployees = employees.filter(employee => {
     const searchLower = searchTerm.toLowerCase();
@@ -149,7 +149,7 @@ export function CourseAssignmentDialog({ courseId, courseName, onClose }: Course
 
       onClose();
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error assigning course:', error);
       toast({
         title: "Error",

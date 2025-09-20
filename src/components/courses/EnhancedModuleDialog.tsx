@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -88,7 +88,7 @@ export function EnhancedModuleDialog({ courseId, module, moduleOrder, onSave, on
       toast({ title: "Success", description: `Module ${module ? 'updated' : 'created'}.` });
       onSave(data);
       onClose();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving module:', error);
       toast({ title: "Error", description: `Failed to save module.`, variant: "destructive" });
     } finally {

@@ -104,7 +104,7 @@ export function AddEmployeeDialog({ open, onOpenChange, onSuccess }: AddEmployee
       toast.success('Employee created successfully');
       onSuccess();
       resetForm();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error creating employee:', error);
       toast.error(error.message || 'Failed to create employee');
     } finally {

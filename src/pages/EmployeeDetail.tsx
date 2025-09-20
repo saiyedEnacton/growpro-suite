@@ -1,7 +1,7 @@
 import { MainNav } from '@/components/navigation/MainNav';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,7 +59,7 @@ export default function EmployeeDetail() {
 
   const canManage = profile?.role?.role_name === 'HR' || profile?.role?.role_name === 'Management';
 
-  const fetchEmployeeDetails = async (showToast = false) => {
+  const fetchEmployeeDetails = useCallback(async (showToast = false) => {
     if (!employeeId) return;
     try {
       const { data, error } = await supabase
@@ -77,14 +77,14 @@ export default function EmployeeDetail() {
       setEmployee(data);
       setEditData(data || {}); // Initialize edit data
       if(showToast) toast.success("Employee details refreshed.");
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to fetch employee data:', error);
-      toast.error(`Failed to load employee details: ${error.message}`);
+      toast.error(`Failed to load employee details: ${(error as Error).message}`);
       setEmployee(null);
     }
-  };
+  }, [employeeId, toast]);
 
-  const fetchAllUsers = async () => {
+  const fetchAllUsers = useCallback(async () => {
     if (!canManage) return;
     try {
       const { data, error } = await supabase
@@ -93,11 +93,11 @@ export default function EmployeeDetail() {
 
       if (error) throw error;
       setAllUsers(data?.filter(user => user.id !== employeeId) || []);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching all users:', error);
-      toast.error(`Failed to load users list: ${error.message}`);
+      toast.error(`Failed to load users list: ${(error as Error).message}`);
     }
-  };
+  }, [canManage, employeeId, toast]);
 
   const handleManagerSelection = async (selectedUserId: string) => {
     if (!employeeId || !canManage) return;
@@ -106,7 +106,7 @@ export default function EmployeeDetail() {
         await supabase.from('profiles').update({ manager_id: null }).eq('id', employeeId);
         toast.success('Team Lead unassigned.');
         fetchEmployeeDetails(true);
-      } catch (error: any) { toast.error(`Failed to unassign Team Lead: ${error.message}`); }
+      } catch (error) { toast.error(`Failed to unassign Team Lead: ${(error as Error).message}`); }
       return;
     }
     const selectedUser = allUsers.find(u => u.id === selectedUserId);
@@ -123,9 +123,9 @@ export default function EmployeeDetail() {
       toast.success(`${selectedUser.first_name} assigned as Team Lead.`);
       fetchEmployeeDetails(true);
       fetchAllUsers();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error in manager assignment process:', error);
-      toast.error(`An error occurred: ${error.message}`);
+      toast.error(`An error occurred: ${(error as Error).message}`);
     }
   };
 
@@ -149,8 +149,8 @@ export default function EmployeeDetail() {
       toast.success("Employee details updated successfully.");
       setIsEditing(false);
       fetchEmployeeDetails(true);
-    } catch (error: any) {
-      toast.error(`Failed to save changes: ${error.message}`);
+    } catch (error) {
+      toast.error(`Failed to save changes: ${(error as Error).message}`);
     }
   };
 
@@ -166,7 +166,7 @@ export default function EmployeeDetail() {
       setLoading(false);
     };
     loadAllData();
-  }, [employeeId, canManage]);
+  }, [employeeId, canManage, fetchEmployeeDetails, fetchAllUsers]);
 
   if (loading) {
     return <div className="flex justify-center items-center min-h-screen">Loading Employee Details...</div>;
@@ -183,9 +183,15 @@ export default function EmployeeDetail() {
     <MainNav />
     <div className="container mx-auto py-6 px-4">
       <div className="flex justify-between items-center">
-        <Link to="/employees">
-          <Button variant="ghost"><ArrowLeft className="h-4 w-4 mr-2" />Back to Employees</Button>
-        </Link>
+        {canManage ? (
+          <Link to="/employees">
+            <Button variant="ghost"><ArrowLeft className="h-4 w-4 mr-2" />Back to Employees</Button>
+          </Link>
+        ) : (
+          <Link to="/dashboard">
+            <Button variant="ghost"><ArrowLeft className="h-4 w-4 mr-2" />Back to Dashboard</Button>
+          </Link>
+        )}
         {canManage && (
           <div className="flex gap-2">
             {isEditing ? (

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from "@/components/ui/badge";
 import { supabase } from '@/integrations/supabase/client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { EvaluationDialog } from '@/components/projects/EvaluationDialog';
 
@@ -54,7 +54,7 @@ export default function EvaluateAssignment() {
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchDetails = async () => {
+  const fetchDetails = useCallback(async () => {
     if (!assignmentId) return;
     setLoading(true);
 
@@ -72,11 +72,11 @@ export default function EvaluateAssignment() {
     }
 
     setLoading(false);
-  };
+  }, [assignmentId]);
 
   useEffect(() => {
     fetchDetails();
-  }, [assignmentId]);
+  }, [fetchDetails]);
 
   if (loading) {
     return <div className="p-8">Loading assignment details...</div>;

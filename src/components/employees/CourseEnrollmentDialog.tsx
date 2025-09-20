@@ -31,7 +31,7 @@ export function CourseEnrollmentDialog({ open, onOpenChange, employeeId, onSucce
       fetchCourses();
       fetchEnrolledCourses();
     }
-  }, [open, employeeId]);
+  }, [open, employeeId, fetchEnrolledCourses]);
 
   const fetchCourses = async () => {
     try {

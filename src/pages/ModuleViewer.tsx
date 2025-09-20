@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect,useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MainNav } from '@/components/navigation/MainNav';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Clock, FileText, Video, Link as LinkIcon, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ModuleViewer() {
@@ -19,46 +19,46 @@ export default function ModuleViewer() {
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchModuleData = useCallback(async () => {
     if (courseId && moduleId && profile?.id) {
-      fetchModuleData();
+      try {
+        // Fetch module details
+        const { data: moduleData, error: moduleError } = await supabase
+          .from('course_modules')
+          .select('*')
+          .eq('id', moduleId)
+          .eq('course_id', courseId)
+          .single();
+
+        if (moduleError) throw moduleError;
+
+        // Fetch course details
+        const { data: courseData, error: courseError } = await supabase
+          .from('courses')
+          .select('course_name')
+          .eq('id', courseId)
+          .single();
+
+        if (courseError) throw courseError;
+
+        setModule(moduleData);
+        setCourse(courseData);
+      } catch (error: Error) {
+        console.error('Error fetching module data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load module content",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
     }
-  }, [courseId, moduleId, profile?.id]);
+  }, [courseId, moduleId, profile?.id, toast]);
 
-  const fetchModuleData = async () => {
-    try {
-      // Fetch module details
-      const { data: moduleData, error: moduleError } = await supabase
-        .from('course_modules')
-        .select('*')
-        .eq('id', moduleId)
-        .eq('course_id', courseId)
-        .single();
-
-      if (moduleError) throw moduleError;
-
-      // Fetch course details
-      const { data: courseData, error: courseError } = await supabase
-        .from('courses')
-        .select('course_name')
-        .eq('id', courseId)
-        .single();
-
-      if (courseError) throw courseError;
-
-      setModule(moduleData);
-      setCourse(courseData);
-    } catch (error) {
-      console.error('Error fetching module data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load module content",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    fetchModuleData();
+  }, [fetchModuleData]);
 
   const getContentIcon = (contentType: string) => {
     switch (contentType?.toLowerCase()) {
@@ -73,6 +73,25 @@ export default function ModuleViewer() {
       default:
         return FileText;
     }
+  };
+
+  const getEmbedUrl = (url: string) => {
+    if (!url) return '';
+    try {
+      const urlObj = new URL(url);
+      if (urlObj.hostname.includes('youtube.com') && urlObj.pathname.includes('watch')) {
+        const videoId = urlObj.searchParams.get('v');
+        return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+      }
+      if (urlObj.hostname.includes('youtu.be')) {
+        const videoId = urlObj.pathname.slice(1);
+        return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+      }
+    } catch (error) {
+      console.error("Invalid URL for embedding:", error);
+      return url;
+    }
+    return url;
   };
 
   const renderContent = () => {
@@ -95,12 +114,14 @@ export default function ModuleViewer() {
       primaryUrl = content_url;
     }
 
+    const embedUrl = getEmbedUrl(primaryUrl);
+
     return (
       <div className="space-y-6">
         {primaryUrl ? (
           <div className="aspect-video bg-muted rounded-lg overflow-hidden border">
             <iframe
-              src={primaryUrl}
+              src={embedUrl}
               className="w-full h-full"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen

@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MainNav } from '@/components/navigation/MainNav';
 import { CourseCard } from '@/components/courses/CourseCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -39,14 +39,48 @@ export default function Courses() {
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
 
-  const fetchCourses = async () => {
+  const fetchCourses = useCallback(async () => {
     try {
-      const { data: coursesData, error } = await supabase
-        .from('courses')
-        .select('*')
-        .order('created_at', { ascending: false });
+      setLoading(true);
+      let coursesData: Course[] | null = [];
 
-      if (error) throw error;
+      if (profile?.role?.role_name === 'Trainee') {
+        const { data: enrolledCourseIds, error: enrolledError } = await supabase
+          .from('course_enrollments')
+          .select('course_id')
+          .eq('employee_id', profile.id);
+
+        if (enrolledError) throw enrolledError;
+
+        const enrolledCourseIdsList = enrolledCourseIds?.map(e => e.course_id) || [];
+
+        const { data: optionalCourses, error: optionalError } = await supabase
+          .from('courses')
+          .select('*')
+          .eq('is_mandatory', false);
+
+        if (optionalError) throw optionalError;
+
+        const { data: enrolledCoursesData, error: enrolledCoursesError } = await supabase
+            .from('courses')
+            .select('*')
+            .in('id', enrolledCourseIdsList);
+
+        if (enrolledCoursesError) throw enrolledCoursesError;
+        
+        const allCourses = [...(enrolledCoursesData || []), ...(optionalCourses || [])];
+        const uniqueCourses = Array.from(new Map(allCourses.map(c => [c.id, c])).values());
+        coursesData = uniqueCourses;
+
+      } else {
+        const { data, error } = await supabase
+          .from('courses')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        coursesData = data;
+      }
+
 
       if (profile?.id) {
         const { data: enrollmentsData } = await supabase
@@ -68,11 +102,11 @@ export default function Courses() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [profile]);
 
   useEffect(() => {
     fetchCourses();
-  }, [profile?.id]);
+  }, [fetchCourses]);
 
   const handleEnroll = async (courseId: string) => {
     try {
@@ -190,7 +224,11 @@ export default function Courses() {
 
         {!loading && filteredCourses.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">No courses found matching your search.</p>
+            <p className="text-muted-foreground">
+              {profile?.role?.role_name === 'Trainee'
+                ? "No courses assigned to you yet, and no optional courses are available."
+                : "No courses found matching your search."}
+            </p>
           </div>
         )}
       </main>

@@ -1,6 +1,6 @@
 import { MainNav } from '@/components/navigation/MainNav';
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/hooks/auth-utils';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,11 +8,21 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users, Search, UserCheck, UserX, Crown, Plus, Eye } from 'lucide-react';
+import { Users, Search, UserCheck, UserX, Crown, Plus, Eye, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserRoleType } from '@/lib/enums';
 import { AddEmployeeDialog } from '@/components/employees/AddEmployeeDialog';
 import { Link } from 'react-router-dom';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Employee {
   id: string;
@@ -45,32 +55,10 @@ export default function Employees() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [addEmployeeDialogOpen, setAddEmployeeDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
 
-  // Check if user has permission to access this page
-  if (!profile || !['HR', 'Management'].includes(profile.role?.role_name || '')) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="w-96">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <UserX className="h-12 w-12 mx-auto text-muted-foreground" />
-              <h2 className="text-xl font-semibold">Access Denied</h2>
-              <p className="text-muted-foreground">
-                You don't have permission to access the employee management page.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  useEffect(() => {
-    fetchEmployees();
-    fetchRoles();
-  }, []);
-
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -100,9 +88,9 @@ export default function Employees() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const fetchRoles = async () => {
+  const fetchRoles = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('roles')
@@ -118,7 +106,33 @@ export default function Employees() {
     } catch (error) {
       console.error('Error:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchEmployees();
+    fetchRoles();
+  }, [fetchEmployees, fetchRoles]);
+
+  const canManageUsers = profile?.role?.role_name === 'Management' || profile?.role?.role_name === 'HR';
+
+  // Check if user has permission to access this page
+  if (!profile || !canManageUsers) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-96">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <UserX className="h-12 w-12 mx-auto text-muted-foreground" />
+              <h2 className="text-xl font-semibold">Access Denied</h2>
+              <p className="text-muted-foreground">
+                You don't have permission to access the employee management page.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const updateEmployeeRole = async (employeeId: string, roleId: string) => {
     try {
@@ -138,6 +152,34 @@ export default function Employees() {
     } catch (error) {
       console.error('Error:', error);
       toast.error('Failed to update employee role');
+    }
+  };
+
+  const openDeleteDialog = (employee: Employee) => {
+    setEmployeeToDelete(employee);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteEmployee = async () => {
+    if (!employeeToDelete) return;
+
+    try {
+      const { data, error } = await supabase.rpc('delete_user', { user_id: employeeToDelete.id });
+
+      if (error || data === 'error: unauthorized') {
+        console.error('Error deleting user:', error);
+        toast.error(`Failed to delete user: ${error?.message || 'Unauthorized'}`);
+        return;
+      }
+
+      toast.success(`User "${employeeToDelete.first_name} ${employeeToDelete.last_name}" deleted.`);
+      fetchEmployees(); // Refresh the list
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Failed to delete user');
+    } finally {
+      setEmployeeToDelete(null);
+      setDeleteDialogOpen(false);
     }
   };
 
@@ -365,6 +407,11 @@ export default function Employees() {
                               ))}
                             </SelectContent>
                           </Select>
+                          {canManageUsers && (
+                            <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(employee)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -394,6 +441,22 @@ export default function Employees() {
             setAddEmployeeDialogOpen(false);
           }}
         />
+
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the user
+                <strong> {employeeToDelete?.first_name} {employeeToDelete?.last_name}</strong> and all of their associated data.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteEmployee}>Confirm Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

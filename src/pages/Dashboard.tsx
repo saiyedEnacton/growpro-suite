@@ -1,13 +1,14 @@
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { UserRoles } from '@/lib/enums';
 import { supabase } from '@/integrations/supabase/client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { DashboardCard } from '@/components/dashboard/DashboardCard';
 import { ProgressChart } from '@/components/dashboard/ProgressChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MainNav } from '@/components/navigation/MainNav';
+import { useNavigate } from 'react-router-dom';
 import {
   BookOpen,
   Users,
@@ -18,99 +19,65 @@ import {
   CheckCircle,
   Clock,
   Target,
+  FolderOpen,
 } from 'lucide-react';
 
 export const Dashboard = () => {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const userRole = profile?.role?.role_name;
   
-  // State for real data
   const [dashboardData, setDashboardData] = useState({
     totalEmployees: 0,
     activeCourses: 0,
     completedCourses: 0,
-    certificates: 0,
+    totalCourses: 0,
+    completionRate: 0,
+    totalProjects: 0,
+    departments: [],
+    courseCompletionRates: [],
+    nextSession: null,
+    courseAssessments: [],
     loading: true
   });
 
-  // Fetch real data from Supabase
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        // Fetch total employees count
-        const { count: totalEmployees } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true });
-        
-        // Fetch user's active courses
-        const { count: activeCourses } = await supabase
-          .from('course_enrollments')
-          .select('*', { count: 'exact', head: true })
-          .eq('employee_id', profile?.id)
-          .eq('status', 'enrolled');
-        
-        // Fetch user's completed courses
-        const { count: completedCourses } = await supabase
-          .from('course_enrollments')
-          .select('*', { count: 'exact', head: true })
-          .eq('employee_id', profile?.id)
-          .eq('status', 'completed');
-          
-        // Fetch user's certificates
-        const { count: certificates } = await supabase
-          .from('course_assessments')
-          .select('*', { count: 'exact', head: true })
-          .eq('employee_id', profile?.id)
-          .not('certificate_url', 'is', null);
-        
-        setDashboardData({
-          totalEmployees: totalEmployees || 0,
-          activeCourses: activeCourses || 0,
-          completedCourses: completedCourses || 0,
-          certificates: certificates || 0,
-          loading: false
-        });
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        setDashboardData(prev => ({ ...prev, loading: false }));
-      }
-    };
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      const { id: userId, role } = profile || {};
+      const userRoleName = role?.role_name;
 
+      let data: any = { loading: false };
+
+      if (userRoleName === UserRoles.MANAGEMENT || userRoleName === UserRoles.HR) {
+        const { count: totalEmployees } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+        const { count: totalCourses } = await supabase.from('courses').select('*', { count: 'exact', head: true });
+        const { count: totalProjects } = await supabase.from('projects').select('*', { count: 'exact', head: true });
+        const { data: enrollments } = await supabase.from('course_enrollments').select('status');
+        const completed = enrollments?.filter(e => e.status === 'completed').length || 0;
+        data.totalEmployees = totalEmployees || 0;
+        data.totalCourses = totalCourses || 0;
+        data.totalProjects = totalProjects || 0;
+        data.completionRate = enrollments && enrollments.length > 0 ? (completed / enrollments.length) * 100 : 0;
+      } else if (userRoleName === UserRoles.TRAINEE) {
+        const { data: enrollments } = await supabase.from('course_enrollments').select('status').eq('employee_id', userId);
+        const activeCourses = enrollments?.filter(e => e.status === 'enrolled').length || 0;
+        data.activeCourses = activeCourses || 0;
+      }
+
+      setDashboardData(prev => ({ ...prev, ...data }));
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setDashboardData(prev => ({ ...prev, loading: false }));
+    }
+  }, [profile]);
+
+  useEffect(() => {
     if (profile?.id) {
       fetchDashboardData();
     }
-  }, [profile?.id]);
-
-  // Sample data for progress chart - will be replaced with real data
-  const sampleEnrollmentData = [
-    { label: 'JavaScript Fundamentals', assessments: 2, completed: 2, color: 'success' as const },
-    { label: 'React Development', assessments: 3, completed: 1, color: 'warning' as const },
-    { label: 'Database Design', assessments: 2, completed: 0, color: 'error' as const },
-  ];
-
-  const recentActivities = [
-    {
-      id: 1,
-      title: 'Completed Course Assessment',
-      description: 'Scored 95% on JavaScript Fundamentals',
-      time: '2 hours ago',
-      type: 'achievement'
-    },
-    {
-      id: 2,
-      title: 'New Course Enrollment',
-      description: 'Enrolled in React Development course',
-      time: '4 hours ago',
-      type: 'enrollment'
-    },
-    {
-      id: 3,
-      title: 'Training Session Reminder',
-      description: 'React Hooks workshop tomorrow at 2 PM',
-      time: '1 day ago',
-      type: 'reminder'
-    },
-  ];
+  }, [fetchDashboardData, profile?.id]);
 
   const getActivityIcon = (type: string) => {
     switch (type) {
@@ -133,28 +100,24 @@ export const Dashboard = () => {
           value={dashboardData.loading ? "..." : dashboardData.totalEmployees.toString()}
           description="Active workforce"
           icon={Users}
-          trend={{ value: 12, label: 'from last month' }}
         />
         <DashboardCard
-          title="Training ROI"
-          value="340%"
-          description="Return on investment"
-          icon={TrendingUp}
-          trend={{ value: 23, label: 'improvement' }}
+          title="Total Courses"
+          value={dashboardData.loading ? "..." : dashboardData.totalCourses.toString()}
+          description="Available in catalog"
+          icon={BookOpen}
         />
         <DashboardCard
           title="Completion Rate"
-          value="87%"
+          value={dashboardData.loading ? "..." : `${dashboardData.completionRate.toFixed(0)}%`}
           description="Average course completion"
           icon={CheckCircle}
-          trend={{ value: 5, label: 'this quarter' }}
         />
         <DashboardCard
-          title="Skill Gaps"
-          value="15"
-          description="Identified areas"
-          icon={AlertCircle}
-          trend={{ value: -8, label: 'resolved' }}
+          title="Total Projects"
+          value={dashboardData.loading ? "..." : dashboardData.totalProjects.toString()}
+          description="Available projects"
+          icon={FolderOpen}
         />
       </div>
 
@@ -164,28 +127,13 @@ export const Dashboard = () => {
             <CardTitle>Department Performance</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {['Engineering', 'Marketing', 'Sales', 'Support'].map((dept, idx) => (
-                <div key={dept} className="flex items-center justify-between">
-                  <span className="font-medium">{dept}</span>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant={idx < 2 ? 'default' : 'secondary'}>
-                      {90 - idx * 5}%
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p className="text-muted-foreground">No department data available.</p>
           </CardContent>
         </Card>
 
         <ProgressChart
           title="Course Completion Rates"
-          data={[
-            { label: 'Technical Courses', value: 85, total: 100, color: 'primary' },
-            { label: 'Soft Skills', value: 72, total: 100, color: 'secondary' },
-            { label: 'Leadership', value: 63, total: 100, color: 'success' },
-          ]}
+          data={[]}
         />
       </div>
     </>
@@ -193,71 +141,13 @@ export const Dashboard = () => {
 
   const renderTraineeDashboard = () => (
     <>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1">
         <DashboardCard
           title="Active Courses"
           value={dashboardData.loading ? "..." : dashboardData.activeCourses.toString()}
           description="Currently enrolled"
           icon={BookOpen}
-          trend={{ value: 1, label: 'new this week' }}
         />
-        <DashboardCard
-          title="Completed"
-          value={dashboardData.loading ? "..." : dashboardData.completedCourses.toString()}
-          description="Courses finished"
-          icon={CheckCircle}
-          trend={{ value: 20, label: 'this month' }}
-        />
-        <DashboardCard
-          title="Certificates"
-          value={dashboardData.loading ? "..." : dashboardData.certificates.toString()}
-          description="Earned credentials"
-          icon={Award}
-        />
-        <DashboardCard
-          title="Next Session"
-          value="Tomorrow"
-          description="React Hooks Workshop"
-          icon={Calendar}
-        />
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ProgressChart
-          title="Course Assessments"
-          data={sampleEnrollmentData.map(course => ({
-            label: course.label,
-            value: course.completed,
-            total: course.assessments,
-            color: course.color
-          }))}
-        />
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-3">
-                  <div className="mt-0.5">{getActivityIcon(activity.type)}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">
-                      {activity.title}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {activity.description}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {activity.time}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </>
   );
@@ -294,30 +184,29 @@ export const Dashboard = () => {
             <div className="flex flex-wrap gap-3">
               {userRole === UserRoles.MANAGEMENT && (
                 <>
-                  <Button variant="outline">View Analytics Report</Button>
-                  <Button variant="outline">Department Overview</Button>
-                  <Button variant="outline">Budget Review</Button>
+                  <Button variant="outline" disabled>View Analytics Report</Button>
+                  <Button variant="outline" disabled>Department Overview</Button>
+                  <Button variant="outline" disabled>Budget Review</Button>
                 </>
               )}
               {userRole === UserRoles.HR && (
                 <>
-                  <Button variant="outline">Add New Employee</Button>
-                  <Button variant="outline">Schedule Training</Button>
-                  <Button variant="outline">Generate Reports</Button>
+                  <Button variant="outline" disabled>Add New Employee</Button>
+                  <Button variant="outline" disabled>Schedule Training</Button>
+                  <Button variant="outline" disabled>Generate Reports</Button>
                 </>
               )}
               {userRole === UserRoles.TEAM_LEAD && (
                 <>
-                  <Button variant="outline">Create Course</Button>
-                  <Button variant="outline">Assign Project</Button>
-                  <Button variant="outline">View Team Progress</Button>
+                  <Button variant="outline" onClick={() => navigate('/courses/create')}>Create Course</Button>
+                  <Button variant="outline" onClick={() => navigate('/projects')}>Assign Project</Button>
+                  <Button variant="outline" disabled>View Team Progress</Button>
                 </>
               )}
               {userRole === UserRoles.TRAINEE && (
                 <>
-                  <Button>Continue Learning</Button>
-                  <Button variant="outline">View Certificates</Button>
-                  <Button variant="outline">Join Session</Button>
+                  <Button onClick={() => navigate('/courses')}>Continue Learning</Button>
+                  <Button variant="outline" onClick={() => navigate('/training-sessions')}>Join Session</Button>
                 </>
               )}
             </div>

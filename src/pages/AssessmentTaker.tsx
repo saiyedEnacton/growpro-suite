@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect,useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -62,29 +62,7 @@ export default function AssessmentTaker() {
   const [submitting, setSubmitting] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
 
-  useEffect(() => {
-    if (assessmentId && user) {
-      fetchAssessmentData();
-    }
-  }, [assessmentId, user]);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isStarted && timeRemaining > 0) {
-      timer = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) {
-            handleSubmitAssessment();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [isStarted, timeRemaining]);
-
-  const fetchAssessmentData = async () => {
+  const fetchAssessmentData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -113,7 +91,7 @@ export default function AssessmentTaker() {
       setQuestions(questionsData || []);
       setTimeRemaining((assessmentData.time_limit_minutes || 60) * 60);
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching assessment data:', error);
       toast({
         title: "Error",
@@ -123,52 +101,37 @@ export default function AssessmentTaker() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [assessmentId, toast]);
 
-  const handleAnswerChange = (questionId: string, answer: string) => {
-    setAnswers(prev => ({
-      ...prev,
-      [questionId]: [answer]
-    }));
-  };
-
-  const handleMultipleAnswerChange = (questionId: string, optionId: string, checked: boolean) => {
-    setAnswers(prev => {
-      const currentAnswers = prev[questionId] || [];
-      if (checked) {
-        return { ...prev, [questionId]: [...currentAnswers, optionId] };
-      } else {
-        return { ...prev, [questionId]: currentAnswers.filter(id => id !== optionId) };
-      }
-    });
-  };
-
-  const calculateScore = () => {
+  const calculateScore = useCallback(() => {
     let totalPoints = 0;
     let earnedPoints = 0;
 
-    questions.forEach(question => {
-      totalPoints += question.points;
-      const userAnswers = answers[question.id] || [];
-      const correctOptions = question.question_options.filter(opt => opt.is_correct);
-      
-      if (question.question_type === 'multiple_choice') {
-        const isCorrect = userAnswers.length === 1 && 
-          correctOptions.some(opt => opt.id === userAnswers[0]);
-        if (isCorrect) earnedPoints += question.points;
-      } else if (question.question_type === 'multiple_select') {
-        const correctIds = correctOptions.map(opt => opt.id).sort();
-        const userIds = userAnswers.sort();
-        if (JSON.stringify(correctIds) === JSON.stringify(userIds)) {
-          earnedPoints += question.points;
+    questions.forEach(q => {
+      totalPoints += q.points || 0;
+      const correctOptions = q.question_options.filter(opt => opt.is_correct).map(opt => opt.id);
+      const selectedOptions = answers[q.id] || [];
+
+      if (q.question_type === 'multiple_choice') { // Single correct answer
+        if (correctOptions.length === 1 && selectedOptions.length === 1 && selectedOptions[0] === correctOptions[0]) {
+          earnedPoints += q.points || 0;
+        }
+      } else if (q.question_type === 'multiple_select') { // Multiple correct answers
+        const isCorrect = 
+          correctOptions.length === selectedOptions.length &&
+          correctOptions.every(opt => selectedOptions.includes(opt));
+        if (isCorrect) {
+          earnedPoints += q.points || 0;
         }
       }
     });
 
-    return { totalPoints, earnedPoints, percentage: (earnedPoints / totalPoints) * 100 };
-  };
+    const percentage = totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
+    return { totalPoints, earnedPoints, percentage };
 
-  const handleSubmitAssessment = async () => {
+  }, [questions, answers]);
+
+  const handleSubmitAssessment = useCallback(async () => {
     if (!user || !assessment) return;
 
     try {
@@ -203,7 +166,7 @@ export default function AssessmentTaker() {
 
       navigate(`/courses/${assessment.course_id}`);
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error submitting assessment:', error);
       toast({
         title: "Error",
@@ -213,7 +176,53 @@ export default function AssessmentTaker() {
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [user, assessment, calculateScore, navigate, toast]);
+
+  useEffect(() => {
+    if (assessmentId && user) {
+      fetchAssessmentData();
+    }
+  }, [assessmentId, user, fetchAssessmentData]);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isStarted && timeRemaining > 0) {
+      timer = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            handleSubmitAssessment();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [isStarted, timeRemaining, handleSubmitAssessment]);
+
+  const handleAnswerChange = useCallback((questionId: string, value: string) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: [value]
+    }));
+  }, []);
+
+  const handleMultipleAnswerChange = useCallback((questionId: string, optionId: string, isChecked: boolean) => {
+    setAnswers(prev => {
+      const existingAnswers = prev[questionId] || [];
+      if (isChecked) {
+        return {
+          ...prev,
+          [questionId]: [...existingAnswers, optionId]
+        };
+      } else {
+        return {
+          ...prev,
+          [questionId]: existingAnswers.filter(id => id !== optionId)
+        };
+      }
+    });
+  }, []);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);

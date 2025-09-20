@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, Save, Plus, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { useToast } from '@/hooks/use-toast';
 import { ModuleDialog } from '@/components/courses/ModuleDialog';
 import { EnhancedModuleDialog } from '@/components/courses/EnhancedModuleDialog';
@@ -22,19 +22,19 @@ export default function CreateCourse() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { toast } = useToast();
-  
+
   const [loading, setLoading] = useState(false);
-  const [currentCourseId, setCurrentCourseId] = useState<string | null>(null);
+  const [currentCourseId, setCurrentCourseId] = useState(null);
   const [activeTab, setActiveTab] = useState('details');
-  const [modules, setModules] = useState<any[]>([]);
-  const [assessments, setAssessments] = useState<any[]>([]);
-  
+  const [modules, setModules] = useState([]);
+  const [assessments, setAssessments] = useState([]);
+
   // Dialog states
   const [showModuleDialog, setShowModuleDialog] = useState(false);
   const [showAssessmentDialog, setShowAssessmentDialog] = useState(false);
-  const [editingModule, setEditingModule] = useState<any>(null);
-  const [editingAssessment, setEditingAssessment] = useState<any>(null);
-  
+  const [editingModule, setEditingModule] = useState(null);
+  const [editingAssessment, setEditingAssessment] = useState(null);
+
   const [formData, setFormData] = useState({
     course_name: '',
     course_description: '',
@@ -47,9 +47,7 @@ export default function CreateCourse() {
     minimum_passing_percentage: 70
   });
 
-  const canCreateCourse = profile?.role?.role_name === 'Team Lead' || 
-                         profile?.role?.role_name === 'HR' ||
-                         profile?.role?.role_name === 'Management';
+  const canCreateCourse = profile?.role?.role_name === 'Team Lead' || profile?.role?.role_name === 'HR' || profile?.role?.role_name === 'Management';
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -57,7 +55,7 @@ export default function CreateCourse() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!canCreateCourse) {
       toast({
         title: "Access Denied",
@@ -68,26 +66,20 @@ export default function CreateCourse() {
     }
 
     setLoading(true);
-    
     try {
       const { data, error } = await supabase
         .from('courses')
-        .insert({
-          ...formData,
-          created_by: profile?.id
-        })
+        .insert({ ...formData, created_by: profile?.id })
         .select()
         .single();
 
       if (error) throw error;
 
       setCurrentCourseId(data.id);
-      
       toast({
         title: "Success",
         description: "Course created successfully. Now you can add modules and assessments."
       });
-      
       // Switch to modules tab after course creation
       setActiveTab('modules');
     } catch (error) {
@@ -114,7 +106,6 @@ export default function CreateCourse() {
 
   const handleDeleteModule = async (moduleId: string) => {
     if (!currentCourseId) return;
-    
     try {
       const { error } = await supabase
         .from('course_modules')
@@ -158,7 +149,6 @@ export default function CreateCourse() {
 
   const handleDeleteAssessment = async (assessmentId: string) => {
     if (!currentCourseId) return;
-    
     try {
       const { error } = await supabase
         .from('assessment_templates')
@@ -188,121 +178,102 @@ export default function CreateCourse() {
 
   if (!canCreateCourse) {
     return (
-      <div className="min-h-screen bg-background">
-        <MainNav />
-        <main className="max-w-2xl mx-auto px-4 py-8">
-          <Button variant="ghost" onClick={() => navigate('/courses')} className="mb-6">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Courses
-          </Button>
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">You don't have permission to create courses</p>
-            </CardContent>
-          </Card>
-        </main>
+      <div className="container mx-auto py-10">
+        <Button variant="outline" onClick={() => navigate('/courses')} className="mb-6">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Courses
+        </Button>
+        <Card>
+          <CardHeader>
+            <CardTitle>Access Denied</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>You don't have permission to create courses</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="container mx-auto py-10">
       <MainNav />
-      
-      <main className="max-w-2xl mx-auto px-4 py-8">
-        <Button variant="ghost" onClick={() => navigate('/courses')} className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Courses
-        </Button>
+      <Button variant="outline" onClick={() => navigate('/courses')} className="mb-6">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Courses
+      </Button>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Create New Course</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="details">Course Details</TabsTrigger>
-                <TabsTrigger value="modules" disabled={!currentCourseId}>
-                  Modules {currentCourseId ? '' : '(Save first)'}
-                </TabsTrigger>
-                <TabsTrigger value="assessments" disabled={!currentCourseId}>
-                  Assessments {currentCourseId ? '' : '(Save first)'}
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="details" className="space-y-6">
-                <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="course_name">Course Name</Label>
-                <Input
-                  id="course_name"
-                  value={formData.course_name}
-                  onChange={(e) => handleInputChange('course_name', e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="course_description">Course Description</Label>
-                <Textarea
-                  id="course_description"
-                  value={formData.course_description}
-                  onChange={(e) => handleInputChange('course_description', e.target.value)}
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="course_type">Course Type</Label>
-                  <Input
-                    id="course_type"
-                    value={formData.course_type}
-                    onChange={(e) => handleInputChange('course_type', e.target.value)}
-                    placeholder="e.g., Technical, Soft Skills"
-                  />
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Create New Course</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="details">Course Details</TabsTrigger>
+              <TabsTrigger value="modules" disabled={!currentCourseId}>Modules {currentCourseId ? '' : '(Save first)'}</TabsTrigger>
+              <TabsTrigger value="assessments" disabled={!currentCourseId}>Assessments {currentCourseId ? '' : '(Save first)'}</TabsTrigger>
+            </TabsList>
+            <TabsContent value="details" className="mt-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="course_name">Course Name</Label>
+                    <Input
+                      id="course_name"
+                      value={formData.course_name}
+                      onChange={(e) => handleInputChange('course_name', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="course_description">Course Description</Label>
+                    <Textarea
+                      id="course_description"
+                      value={formData.course_description}
+                      onChange={(e) => handleInputChange('course_description', e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="course_type">Course Type</Label>
+                    <Input
+                      id="course_type"
+                      value={formData.course_type}
+                      onChange={(e) => handleInputChange('course_type', e.target.value)}
+                      placeholder="e.g., Technical, Soft Skills"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="difficulty_level">Difficulty Level</Label>
+                    <Select value={formData.difficulty_level} onValueChange={(value) => handleInputChange('difficulty_level', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select difficulty" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Beginner">Beginner</SelectItem>
+                        <SelectItem value="Intermediate">Intermediate</SelectItem>
+                        <SelectItem value="Advanced">Advanced</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="target_role">Target Role</Label>
+                    <Input
+                      id="target_role"
+                      value={formData.target_role}
+                      onChange={(e) => handleInputChange('target_role', e.target.value)}
+                      placeholder="e.g., Developer, Manager"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="learning_objectives">Learning Objectives</Label>
+                    <Textarea
+                      id="learning_objectives"
+                      value={formData.learning_objectives}
+                      onChange={(e) => handleInputChange('learning_objectives', e.target.value)}
+                      rows={3}
+                    />
+                  </div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Difficulty Level</Label>
-                  <Select 
-                    value={formData.difficulty_level} 
-                    onValueChange={(value) => handleInputChange('difficulty_level', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Beginner">Beginner</SelectItem>
-                      <SelectItem value="Intermediate">Intermediate</SelectItem>
-                      <SelectItem value="Advanced">Advanced</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="target_role">Target Role</Label>
-                <Input
-                  id="target_role"
-                  value={formData.target_role}
-                  onChange={(e) => handleInputChange('target_role', e.target.value)}
-                  placeholder="e.g., Developer, Manager"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="learning_objectives">Learning Objectives</Label>
-                <Textarea
-                  id="learning_objectives"
-                  value={formData.learning_objectives}
-                  onChange={(e) => handleInputChange('learning_objectives', e.target.value)}
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-4">
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="is_mandatory"
@@ -311,15 +282,11 @@ export default function CreateCourse() {
                   />
                   <Label htmlFor="is_mandatory">Mandatory Course</Label>
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Completion Rule</Label>
-                  <Select 
-                    value={formData.completion_rule} 
-                    onValueChange={(value) => handleInputChange('completion_rule', value)}
-                  >
+                <div>
+                  <Label htmlFor="completion_rule">Completion Rule</Label>
+                  <Select value={formData.completion_rule} onValueChange={(value) => handleInputChange('completion_rule', value)}>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select completion rule" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pass_all_assessments">Pass All Assessments</SelectItem>
@@ -328,199 +295,163 @@ export default function CreateCourse() {
                     </SelectContent>
                   </Select>
                 </div>
-
                 {formData.completion_rule === 'pass_minimum_percentage' && (
-                  <div className="space-y-2">
+                  <div>
                     <Label htmlFor="minimum_passing_percentage">Minimum Passing Percentage</Label>
                     <Input
                       id="minimum_passing_percentage"
                       type="number"
-                      min="0"
-                      max="100"
                       value={formData.minimum_passing_percentage}
                       onChange={(e) => handleInputChange('minimum_passing_percentage', parseInt(e.target.value))}
                     />
                   </div>
                 )}
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" type="button" onClick={() => navigate('/courses')}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={loading}>
+                    {loading ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Saving...
+                      </span>
+                    ) : (
+                      <><Save className="mr-2 h-4 w-4" /> {currentCourseId ? 'Update Course' : 'Create Course'}</>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </TabsContent>
+            <TabsContent value="modules" className="mt-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">COURSE MODULES</h3>
+                <Button onClick={handleAddModule} disabled={!currentCourseId}>
+                  <Plus className="mr-2 h-4 w-4" /> Add Module
+                </Button>
               </div>
-
-                  <div className="flex justify-end space-x-4">
-                    <Button type="button" variant="outline" onClick={() => navigate('/courses')}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={loading}>
-                      {loading ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
-                      ) : (
-                        <Save className="h-4 w-4 mr-2" />
-                      )}
-                      {currentCourseId ? 'Update Course' : 'Create Course'}
-                    </Button>
-                  </div>
-                </form>
-              </TabsContent>
-
-              <TabsContent value="modules" className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold">Course Modules</h3>
-                  <Button onClick={handleAddModule}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Module
-                  </Button>
-                </div>
-
+              {modules.length === 0 ? (
+                <p className="text-center text-muted-foreground">
+                  No modules added yet. Click "Add Module" to get started.
+                </p>
+              ) : (
                 <div className="space-y-4">
-                  {modules.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">
-                      No modules added yet. Click "Add Module" to get started.
-                    </p>
-                  ) : (
-                    modules.map((module, index) => (
-                      <Card key={module.id}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h4 className="font-medium">{module.module_name}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                {module.module_description}
-                              </p>
-                              <div className="flex items-center space-x-4 mt-2 text-xs text-muted-foreground">
-                                <span>Order: {module.module_order}</span>
-                                <span>Type: {module.content_type}</span>
-                                <span>Duration: {module.estimated_duration_minutes}min</span>
-                              </div>
-                            </div>
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEditModule(module)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteModule(module.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
+                  {modules.map((module, index) => (
+                    <Card key={module.id || index}>
+                      <CardContent className="p-4 flex justify-between items-center">
+                        <div>
+                          <h4 className="font-semibold">{module.module_name}</h4>
+                          <p className="text-sm text-muted-foreground">{module.module_description}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Order: {module.module_order} Type: {module.content_type} Duration: {module.estimated_duration_minutes}min
+                          </p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button variant="outline" size="icon" onClick={() => handleEditModule(module)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="destructive" size="icon" onClick={() => handleDeleteModule(module.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-
-                <div className="flex justify-end">
-                  <Button onClick={handleFinishCourse}>
-                    Continue to Course
-                  </Button>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="assessments" className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold">Course Assessments</h3>
-                  <Button onClick={handleAddAssessment}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Assessment
-                  </Button>
-                </div>
-
+              )}
+              <div className="flex justify-end mt-6">
+                <Button onClick={() => setActiveTab('assessments')} disabled={!currentCourseId}>
+                  Continue to Course
+                </Button>
+              </div>
+            </TabsContent>
+            <TabsContent value="assessments" className="mt-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">COURSE ASSESSMENTS</h3>
+                <Button onClick={handleAddAssessment} disabled={!currentCourseId}>
+                  <Plus className="mr-2 h-4 w-4" /> Add Assessment
+                </Button>
+              </div>
+              {assessments.length === 0 ? (
+                <p className="text-center text-muted-foreground">
+                  No assessments added yet. Click "Add Assessment" to get started.
+                </p>
+              ) : (
                 <div className="space-y-4">
-                  {assessments.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">
-                      No assessments added yet. Click "Add Assessment" to get started.
-                    </p>
-                  ) : (
-                    assessments.map((assessment) => (
-                      <Card key={assessment.id}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h4 className="font-medium">{assessment.title}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                {assessment.description}
-                              </p>
-                              <div className="flex items-center space-x-4 mt-2 text-xs text-muted-foreground">
-                                <span>Type: {assessment.assessment_type}</span>
-                                <span>Passing: {assessment.passing_score}%</span>
-                                <span>Time: {assessment.time_limit_minutes}min</span>
-                                {assessment.is_mandatory && <span className="text-destructive">Mandatory</span>}
-                              </div>
-                            </div>
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEditAssessment(assessment)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteAssessment(assessment.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
+                  {assessments.map((assessment) => (
+                    <Card key={assessment.id}>
+                      <CardContent className="p-4 flex justify-between items-center">
+                        <div>
+                          <h4 className="font-semibold">{assessment.title}</h4>
+                          <p className="text-sm text-muted-foreground">{assessment.description}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Type: {assessment.assessment_type} Passing: {assessment.passing_score}% Time: {assessment.time_limit_minutes}min {assessment.is_mandatory && <span className="font-medium text-red-500">Mandatory</span>}
+                          </p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button variant="outline" size="icon" onClick={() => handleEditAssessment(assessment)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="destructive" size="icon" onClick={() => handleDeleteAssessment(assessment.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
+              )}
+              <div className="flex justify-end mt-6">
+                <Button onClick={handleFinishCourse} disabled={!currentCourseId}>
+                  Finish & View Course
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
 
-                <div className="flex justify-end">
-                  <Button onClick={handleFinishCourse}>
-                    Finish & View Course
-                  </Button>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+      {/* Dialogs */}
+      <Dialog open={showModuleDialog} onOpenChange={setShowModuleDialog}>
+        <DialogContent className="sm:max-w-[800px]">
+          <DialogHeader>
+            <DialogTitle>{editingModule ? 'Edit Module' : 'Add New Module'}</DialogTitle>
+          </DialogHeader>
+          {currentCourseId && (
+            <EnhancedModuleDialog
+              courseId={currentCourseId}
+              module={editingModule}
+              onSave={handleModuleSave}
+              onClose={() => setShowModuleDialog(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
-        {/* Dialogs */}
-        <Dialog open={showModuleDialog} onOpenChange={setShowModuleDialog}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingModule ? 'Edit Module' : 'Add New Module'}
-              </DialogTitle>
-            </DialogHeader>
-            {currentCourseId && (
-              <EnhancedModuleDialog
-                courseId={currentCourseId}
-                module={editingModule}
-                moduleOrder={modules.length + 1}
-                onSave={handleModuleSave}
-                onClose={() => setShowModuleDialog(false)}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={showAssessmentDialog} onOpenChange={setShowAssessmentDialog}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingAssessment ? 'Edit Assessment' : 'Add New Assessment'}
-              </DialogTitle>
-            </DialogHeader>
-            {currentCourseId && (
-              <AssessmentDialog
-                courseId={currentCourseId}
-                assessment={editingAssessment}
-                onClose={() => setShowAssessmentDialog(false)}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
-      </main>
+      <Dialog open={showAssessmentDialog} onOpenChange={setShowAssessmentDialog}>
+        <DialogContent className="sm:max-w-[800px]">
+          <DialogHeader>
+            <DialogTitle>{editingAssessment ? 'Edit Assessment' : 'Add New Assessment'}</DialogTitle>
+          </DialogHeader>
+          {currentCourseId && (
+            <AssessmentDialog
+              courseId={currentCourseId}
+              assessment={editingAssessment}
+              onSave={(newAssessment) => {
+                if (editingAssessment) {
+                  setAssessments(prev => prev.map(a => a.id === newAssessment.id ? newAssessment : a));
+                } else {
+                  setAssessments(prev => [...prev, newAssessment]);
+                }
+              }}
+              onClose={() => setShowAssessmentDialog(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

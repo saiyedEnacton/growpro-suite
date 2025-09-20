@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -80,36 +80,7 @@ export default function CourseBuilder() {
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
 
-  useEffect(() => {
-    if (courseId) {
-      fetchCourseData();
-    }
-  }, [courseId]);
-
-  // Check permissions - using Supabase function to get user role
-  const canManageCourses = async () => {
-    if (!user) return false;
-    try {
-      const { data, error } = await supabase.rpc('get_user_role', { user_id: user.id });
-      if (error) throw error;
-      return ['Team Lead', 'HR', 'Management'].includes(data);
-    } catch (error) {
-      console.error('Error checking user role:', error);
-      return false;
-    }
-  };
-
-  const [hasManagePermission, setHasManagePermission] = useState(false);
-
-  useEffect(() => {
-    const checkPermissions = async () => {
-      const canManage = await canManageCourses();
-      setHasManagePermission(canManage);
-    };
-    checkPermissions();
-  }, [user]);
-
-  const fetchCourseData = async () => {
+  const fetchCourseData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -141,7 +112,7 @@ export default function CourseBuilder() {
       setModules(modulesData || []);
       setAssessmentCount(assessmentCount || 0);
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching course data:', error);
       toast({
         title: "Error",
@@ -151,12 +122,40 @@ export default function CourseBuilder() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [courseId, toast]);
+
+  useEffect(() => {
+    if (courseId) {
+      fetchCourseData();
+    }
+  }, [courseId, fetchCourseData]);
+
+  // Check permissions - using Supabase function to get user role
+  const canManageCourses = useCallback(async () => {
+    if (!user) return false;
+    try {
+      const { data, error } = await supabase.rpc('get_user_role', { user_id: user.id });
+      if (error) throw error;
+      return ['Team Lead', 'HR', 'Management'].includes(data);
+    } catch (error) {
+      console.error('Error checking user role:', error);
+      return false;
+    }
+  }, [user]);
+
+  const [hasManagePermission, setHasManagePermission] = useState(false);
+
+  useEffect(() => {
+    const checkPermissions = async () => {
+      const canManage = await canManageCourses();
+      setHasManagePermission(canManage);
+    };
+    checkPermissions();
+  }, [canManageCourses]);
 
   const handleSaveCourse = async () => {
     if (!course) return;
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id, ...updateData } = course;
 
     try {
@@ -173,7 +172,7 @@ export default function CourseBuilder() {
         description: "Course updated successfully.",
       });
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating course:', error);
       toast({
         title: "Error",
@@ -206,7 +205,7 @@ export default function CourseBuilder() {
         description: "Module deleted successfully.",
       });
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting module:', error);
       toast({
         title: "Error",

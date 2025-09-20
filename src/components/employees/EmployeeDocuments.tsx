@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,8 +42,8 @@ export function EmployeeDocuments({ employeeId }: EmployeeDocumentsProps) {
 
       if (error) throw error;
       setDocuments(data || []);
-    } catch (error: any) {
-      toast.error(`Failed to fetch documents: ${error.message}`);
+    } catch (error) {
+      toast.error(`Failed to fetch documents: ${(error as Error).message}`);
     } finally {
       setLoading(false);
     }
@@ -117,8 +117,8 @@ export function EmployeeDocuments({ employeeId }: EmployeeDocumentsProps) {
       const fileInput = document.getElementById('file-input') as HTMLInputElement;
       if(fileInput) fileInput.value = "";
       fetchDocuments();
-    } catch (error: any) {
-      toast.error(`Upload failed: ${error.message || 'An unknown error occurred'}`);
+    } catch (error) {
+      toast.error(`Upload failed: ${(error as Error).message || 'An unknown error occurred'}`);
     } finally {
       setUploading(false);
     }
@@ -149,8 +149,8 @@ export function EmployeeDocuments({ employeeId }: EmployeeDocumentsProps) {
 
       toast.success('Document deleted successfully.');
       fetchDocuments();
-    } catch (error: any) {
-      toast.error(`Failed to delete document: ${error.message || 'An unknown error occurred'}`);
+    } catch (error) {
+      toast.error(`Failed to delete document: ${(error as Error).message || 'An unknown error occurred'}`);
     }
   };
 
@@ -166,8 +166,8 @@ export function EmployeeDocuments({ employeeId }: EmployeeDocumentsProps) {
       // In a new tab, open the signed URL to download the file
       window.open(data.signedUrl, '_blank');
       
-    } catch (error: any) {
-      toast.error(`Failed to download file: ${error.message || 'An unknown error occurred'}`);
+    } catch (error) {
+      toast.error(`Failed to download file: ${(error as Error).message || 'An unknown error occurred'}`);
     }
   };
 

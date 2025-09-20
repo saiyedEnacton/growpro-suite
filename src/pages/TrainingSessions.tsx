@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, Users, Video, Trash2 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/auth-utils';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateSessionDialog } from '@/components/training/CreateSessionDialog';
 import { AssignSessionDialog } from '@/components/training/AssignSessionDialog';
@@ -44,7 +44,7 @@ export default function TrainingSessions() {
     const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
 
-    const fetchSessions = async () => {
+    const fetchSessions = useCallback(async () => {
         if (!user || !profile) return;
         setLoading(true);
 
@@ -58,11 +58,11 @@ export default function TrainingSessions() {
             setSessions(data as Session[]);
         }
         setLoading(false);
-    };
+    }, [user, profile]);
 
     useEffect(() => {
         fetchSessions();
-    }, [user, profile]);
+    }, [user, profile, fetchSessions]);
 
     const handleSessionCreated = (sessionId: string) => {
         fetchSessions();

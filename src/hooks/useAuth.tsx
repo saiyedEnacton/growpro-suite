@@ -1,7 +1,10 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { UserRoleType } from '@/lib/enums';
+import { AuthContext, useAuth } from './auth-utils';
+
+// This is a dummy comment to force re-evaluation
 
 interface Profile {
   id: string;
@@ -18,16 +21,6 @@ interface Profile {
   } | null;
 }
 
-interface AuthContextType {
-  user: User | null;
-  profile: Profile | null;
-  loading: boolean;
-  signOut: () => Promise<void>;
-  refreshProfile: (userId?: string) => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(() => {
@@ -40,7 +33,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   });
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     try {
       const attempt = async () => {
         const { data, error } = await supabase
@@ -78,7 +71,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             .eq('id', (base as any).role_id)
             .maybeSingle();
           if (roleErr) console.warn('Role fetch failed:', roleErr);
-          else if (roleRow) role = { role_name: roleRow.role_name as any, role_description: roleRow.role_description ?? null };
+          else if (roleRow) role = { role_name: roleRow.role_name as UserRoleType, role_description: roleRow.role_description ?? null };
         }
 
         return { ...base, role } as Profile;
@@ -98,9 +91,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('Error in fetchProfile:', error);
       return null;
     }
-  };
+  }, []);
 
-  const refreshProfile = async (userId?: string) => {
+  const refreshProfile = useCallback(async (userId?: string) => {
     const id = userId ?? user?.id;
     if (id) {
       const profileData = await fetchProfile(id);
@@ -109,7 +102,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setProfile(null);
       sessionStorage.removeItem('userProfile');
     }
-  };
+  }, [user?.id, fetchProfile]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -164,7 +157,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     initializeAuth();
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [user?.id, refreshProfile, fetchProfile]);
 
   const signOut = async () => {
     try {
@@ -184,25 +177,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     profile,
     loading,
     signOut,
     refreshProfile,
-  };
+  }), [user, profile, loading, signOut, refreshProfile]);
 
   return (
     <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };

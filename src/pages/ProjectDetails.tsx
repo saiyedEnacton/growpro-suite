@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from '@/integrations/supabase/client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { AssignProjectDialog } from '@/components/projects/AssignProjectDialog';
 
@@ -36,7 +36,7 @@ export default function ProjectDetails() {
   
   const [isAssignDialogOpen, setAssignDialogOpen] = useState(false);
 
-  const fetchDetails = async () => {
+  const fetchDetails = useCallback(async () => {
     if (!projectId) return;
     setLoading(true);
 
@@ -68,11 +68,11 @@ export default function ProjectDetails() {
     }
 
     setLoading(false);
-  };
+  }, [projectId]);
 
   useEffect(() => {
     fetchDetails();
-  }, [projectId]);
+  }, [fetchDetails]);
 
   if (loading) {
     return <div className="p-8">Loading project details...</div>;

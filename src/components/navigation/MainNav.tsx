@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { useState, memo } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-utils';
 import { UserRoles } from '@/lib/enums';
 import {
   BarChart3,
@@ -22,6 +22,7 @@ import {
   LogOut,
   Menu,
   GraduationCap,
+  User
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
@@ -71,8 +72,34 @@ const navigationItems: NavItem[] = [
   },
 ];
 
+const NavItems = memo(({ items, isMobile = false, onItemClick = () => {} }: { items: NavItem[], isMobile?: boolean, onItemClick?: () => void }) => (
+  <>
+    {items.map((item) => {
+      const Icon = item.icon;
+      return (
+        <NavLink
+          key={item.href}
+          to={item.href}
+          onClick={() => onItemClick()}
+          className={({ isActive }) => isActive ? 'bg-accent/80 rounded-md' : ''}
+        >
+          <Button
+            variant="ghost"
+            size={isMobile ? "lg" : "sm"}
+            className={`${isMobile ? 'justify-start w-full' : ''} text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors`}
+          >
+            <Icon className={`${isMobile ? 'mr-3' : 'mr-2'} h-4 w-4`} />
+            {item.label}
+          </Button>
+        </NavLink>
+      );
+    })}
+  </>
+));
+
 export const MainNav = () => {
   const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const userRole = profile?.role?.role_name;
@@ -83,30 +110,6 @@ export const MainNav = () => {
   const filteredNavItems = userRole
     ? navigationItems.filter(item => item.roles.includes(userRole))
     : navigationItems.filter(item => item.label === 'Dashboard');
-
-  const NavItems = ({ isMobile = false, onItemClick = () => {} }) => (
-    <>
-      {filteredNavItems.map((item) => {
-        const Icon = item.icon;
-        return (
-          <NavLink
-            key={item.href}
-            to={item.href}
-            onClick={() => onItemClick()}
-          >
-            <Button
-              variant="ghost"
-              size={isMobile ? "lg" : "sm"}
-              className={`${isMobile ? 'justify-start w-full' : ''} text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors`}
-            >
-              <Icon className={`${isMobile ? 'mr-3' : 'mr-2'} h-4 w-4`} />
-              {item.label}
-            </Button>
-          </NavLink>
-        );
-      })}
-    </>
-  );
 
   return (
     <nav className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
@@ -125,7 +128,7 @@ export const MainNav = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1">
-            <NavItems />
+            <NavItems items={filteredNavItems} />
           </div>
 
           {/* Right Side */}
@@ -157,9 +160,9 @@ export const MainNav = () => {
                   </p>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
+                <DropdownMenuItem onClick={() => navigate(`/employees/${profile.id}`)}>
+                  <User className="mr-2 h-4 w-4" />
+                  View Profile
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => signOut()}>
@@ -178,7 +181,7 @@ export const MainNav = () => {
               </SheetTrigger>
               <SheetContent side="left" className="w-80">
                 <div className="flex flex-col space-y-3 mt-8">
-                  <NavItems isMobile onItemClick={() => setMobileMenuOpen(false)} />
+                  <NavItems items={filteredNavItems} isMobile onItemClick={() => setMobileMenuOpen(false)} />
                 </div>
               </SheetContent>
             </Sheet>

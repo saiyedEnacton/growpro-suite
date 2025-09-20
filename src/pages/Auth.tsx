@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { SignupForm } from "@/components/auth/SignupForm";
+import heroImage from "@/assets/hero-lms.jpg";
 
 const setMeta = (title: string, description: string, canonical?: string) => {
   document.title = title;
@@ -34,26 +35,40 @@ const AuthPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="py-6">
-        <h1 className="sr-only">GrowPro LMS Authentication</h1>
-      </header>
-      <main className="flex-1 container mx-auto px-4 flex items-center justify-center">
-        <section className="w-full max-w-2xl" aria-label="Authentication">
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            </TabsList>
-            <TabsContent value="login" className="mt-6">
-              <LoginForm />
-            </TabsContent>
-            <TabsContent value="signup" className="mt-6">
-              <SignupForm />
-            </TabsContent>
-          </Tabs>
-        </section>
-      </main>
+    <div className="w-full min-h-screen grid grid-cols-1 md:grid-cols-2">
+      <div className="relative hidden md:flex flex-col justify-center items-center bg-cover bg-center p-12 text-white" style={{ backgroundImage: `url(${heroImage})` }}>
+        <div className="absolute inset-0 bg-primary opacity-70"></div>
+        <div className="relative z-10 text-center">
+          <h1 className="text-4xl font-bold leading-tight mb-4">
+            Unlock Your Team's Potential
+          </h1>
+          <p className="text-lg text-primary-foreground/90">
+            Join GrowPro LMS - the all-in-one solution for professional growth and learning management.
+          </p>
+        </div>
+      </div>
+      <div className="bg-gradient-to-br from-background to-muted flex items-center justify-center p-6 md:p-12">
+        <div className="w-full max-w-md">
+           <div className="text-center mb-6">
+            <h2 className="text-3xl font-bold text-foreground">Get Started</h2>
+            <p className="text-muted-foreground">Access your account or create a new one.</p>
+          </div>
+          <div className="bg-card p-8 rounded-lg shadow-lg" aria-label="Authentication">
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">Login</TabsTrigger>
+                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              </TabsList>
+              <TabsContent value="login" className="mt-6">
+                <LoginForm />
+              </TabsContent>
+              <TabsContent value="signup" className="mt-6">
+                <SignupForm />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

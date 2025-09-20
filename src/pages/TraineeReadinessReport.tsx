@@ -315,12 +315,12 @@ const DetailsTable = ({ data, type, title }: { data: any[], type: 'assessment' |
                 <TableCell>{item.project_name}</TableCell>
                 <TableCell>{item.status}</TableCell>
                 <TableCell className="text-right">
-                  {item.evaluation.length > 0 ? 
+                  {item.evaluation?.length > 0 ? 
                     `${Math.round(item.evaluation.reduce((sum, e) => sum + e.overall_score, 0) / item.evaluation.length * 10)}%`
                     : 'N/A'}
                 </TableCell>
                 <TableCell className="truncate max-w-[200px]">
-                  {item.evaluation[0]?.strengths || 'No feedback yet.'}
+                  {item.evaluation?.[0]?.strengths || 'No feedback yet.'}
                 </TableCell>
               </TableRow>
             ))
